@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSTRACTS — A Summoning Card Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= DECK SELECT ================= -->
+<div id="screen-select">
+  <h1>ABSTRACTS</h1>
+  <div class="sub">Choose the concept you will give form</div>
+  <div class="pick-row" id="pick-row"></div>
+  <div class="note">Your opponent will take up one of the remaining Abstracts.</div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div id="screen-game" class="hidden">
+  <div id="battlefield">
+    <div class="hero-strip" id="strip-foe"></div>
+    <div class="board-wrap"><div class="board" id="board-foe"></div></div>
+    <div id="cmdbar">
+      <span id="turn-ind"></span>
+      <span id="action-hint"></span>
+      <span class="unit-actions hidden" id="unit-actions">
+        <button class="btn invoke-btn" id="btn-invoke">Invoke</button>
+        <button class="btn" id="btn-cancel">Cancel</button>
+      </span>
+      <button class="btn" id="btn-summon">Summon Abstract</button>
+      <button class="btn primary" id="btn-end">End Turn</button>
+    </div>
+    <div class="board-wrap"><div class="board" id="board-you"></div></div>
+    <div class="hero-strip" id="strip-you"></div>
+    <div id="hand"></div>
+  </div>
+  <div id="sidebar">
+    <div class="panel"><h3>Chronicle</h3><div id="log"></div></div>
+    <div class="panel"><h3>Your geometry</h3><div id="nodes-help"></div></div>
+    <div class="panel" style="text-align:center">
+      <button class="btn" id="btn-help">How to play</button>
+      <button class="btn" id="btn-restart" style="margin-left:8px">New game</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= OVERLAYS ================= -->
+<div class="overlay hidden" id="over-overlay"><div class="box">
+  <h2 id="over-title"></h2><p id="over-text"></p>
+  <button class="btn primary" onclick="location.reload()">Play again</button>
+</div></div>
+
+<div class="overlay hidden" id="help-overlay"><div class="box" id="help-box">
+  <h2>HOW TO PLAY</h2>
+  <h4>The goal</h4>
+  <p>Reduce the enemy hero to 0 HP — by force of arms, or by summoning your <b>Abstract</b>: the living concept your deck serves. Fill your Invoke meter to 10 and the Abstract takes form at the centre of your geometry, with devastating powers.</p>
+  <h4>Turns</h4>
+  <ul>
+    <li>Each turn you gain a mana crystal (up to 10), refill mana, and draw a card.</li>
+    <li><b>Drag</b> followers from your hand onto the empty <b>nodes</b> (dots) of your geometry. Each node grants a different bonus — hover a dot to see it.</li>
+    <li>Spells are cast by <b>clicking</b> them; they cost mana and resolve immediately (some need a target).</li>
+  </ul>
+  <h4>Acting with followers</h4>
+  <p>Each follower may act once per turn — but not the turn it is played (it shows a <b>zZ</b> badge while it rests). Click a glowing follower and all valid attack targets light up:</p>
+  <ul>
+    <li><b>Attack</b> — click an enemy follower, their Abstract, or their hero. Followers in combat deal damage to each other.</li>
+    <li><b>Invoke</b> — instead of attacking, press the violet <b>Invoke</b> button to channel the follower's invoke value (its violet badge) into your Abstract's meter.</li>
+  </ul>
+  <p>Press <b>Esc</b>, click <b>Cancel</b>, or click empty ground to deselect. Every turn is the same dilemma: press the attack, hold the line, or hasten the summoning.</p>
+  <h4>The Abstract</h4>
+  <p>Once your meter reaches 10, the <b>Summon Abstract</b> button appears. The Abstract enters at the centre, triggers its arrival power, exerts a passive aura at the start of each of your turns, and can attack like a follower. It can be killed — and it will not return.</p>
+  <h4>The geometries</h4>
+  <p><b>Fear</b> — a pentagon: five versatile nodes for a creeping, attritional game.<br>
+  <b>Justice</b> — a triangle: only three nodes, but each blessing is mighty.<br>
+  <b>Knowledge</b> — a hexagon: six nodes of small, compounding advantages.</p>
+  <div style="text-align:center;margin-top:14px"><button class="btn primary" id="btn-help-close">Close</button></div>
+</div></div>
+
+<!-- engine scripts: order matters (plain scripts, shared global scope) -->
+<script src="js/config.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/archetypes.js"></script>
+<script src="js/state.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

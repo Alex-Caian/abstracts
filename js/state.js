@@ -1,0 +1,65 @@
+'use strict';
+/* =====================================================================
+   ABSTRACTS — state.js
+   Game state container, player factory, and state accessors.
+   ===================================================================== */
+let G = null;   // game state
+let ui = {      // transient UI state
+  selCard: null,    // index into your hand (spells being targeted)
+  selUnit: null,    // {pi,zone,idx} — selecting a unit enters attack targeting
+  targeting: null,  // {mode:'attack'|'enemyUnit'|'friendUnit', hint, onPick}
+  flash: null,      // {msg, until} — transient hint message
+  dragCard: null    // hand index of the follower being dragged
+};
+
+function makePlayer(archKey, name, isAI){
+  const a = ARCH[archKey];
+  return {
+    arch:archKey, name, isAI, hp:START_HP, mana:0, maxMana:0,
+    deck:shuffle(a.deck.slice()), hand:[], board:Array(a.angles.length).fill(null),
+    invoke:0, summoned:false, abstractUnit:null, fatigue:0
+  };
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function foe(p){ return G.players[p===G.players[0]?1:0]; }
+function you(){ return G.players[0]; }
+function enemy(){ return G.players[1]; }
+function active(){ return G.players[G.turn]; }
+
+/* unit refs: {pi: player index, zone:'board'|'abstract', idx} */
+function getUnit(ref){
+  const p = G.players[ref.pi];
+  return ref.zone==='abstract' ? p.abstractUnit : p.board[ref.idx];
+}
+function eachUnits(p,fn){
+  p.board.forEach((u,i)=>{ if(u) fn(u,{pi:G.players.indexOf(p),zone:'board',idx:i}); });
+}
+function unitRefs(p, includeAbstract=true){
+  const pi = G.players.indexOf(p); const out=[];
+  p.board.forEach((u,i)=>{ if(u) out.push({pi,zone:'board',idx:i}); });
+  if(includeAbstract && p.abstractUnit) out.push({pi,zone:'abstract',idx:-1});
+  return out;
+}
+
+function clearSelection(){ ui.selCard=null; ui.selUnit=null; ui.targeting=null; }
+
+function newGame(humanArch){
+  const others = Object.keys(ARCH).filter(k=>k!==humanArch);
+  const aiArch = others[Math.floor(Math.random()*others.length)];
+  G = { players:[ makePlayer(humanArch,'You',false), makePlayer(aiArch,'The Adversary',true) ],
+        turn:0, turnNo:0, over:false };
+  drawCards(G.players[0],4,true); drawCards(G.players[1],5,true);
+  buildBoards();
+  document.getElementById('screen-select').classList.add('hidden');
+  document.getElementById('screen-game').classList.remove('hidden');
+  log(`A duel of concepts begins: ${ARCH[humanArch].name} against ${ARCH[aiArch].name}.`,'sys');
+  startTurn();
+}

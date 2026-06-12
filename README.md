@@ -4,7 +4,7 @@
 
 **[▶ Play it now](https://alex-caian.github.io/abstracts/)** — single-player vs. the Adversary, in your browser. Nothing to install.
 
-![A game of Abstracts in progress: the Knowledge player's hexagon board, with followers on nodes and a tooltip showing a follower's abilities](docs/screenshot.png)
+<img src="screenshots/abstracts1.png"/>
 
 ---
 

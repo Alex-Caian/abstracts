@@ -122,7 +122,7 @@ The project follows a staging → release flow: changes are developed and playte
 
 | Version | Highlights |
 |---|---|
-| v0.2.5 | The ritual update: link-gated invoking, communion, per-Abstract summon costs, Knowledge's distillable octagon (Twin Prophets, Veil of Theory, Distillation, Refutation), aggro Fear (cheap recurring form, Mass Hysteria, Giant Spiders), the litany (decks recycle, overdraw forgets), turn-25 decay clock, Terrified status, AI-vs-AI balance simulator |
+| v0.2.2 | The ritual update: link-gated invoking, communion, per-Abstract summon costs, Knowledge's distillable octagon (Twin Prophets, Veil of Theory, Distillation, Refutation), aggro Fear (cheap recurring form, Mass Hysteria, Giant Spiders), the litany (decks recycle, overdraw forgets), turn-25 decay clock, Terrified status, AI-vs-AI balance simulator |
 | v0.2.1 | Mobile support: drag-and-drop rebuilt on Pointer Events (touch and mouse), ghost-card drag preview, ghost-click suppression |
 | v0.2.0 | Invoke economy rework: the Abstract *is* the player — 30 HP core, pure-HP shield forms, resummoning at escalating cost, arrival powers, once-per-turn abilities, hover tooltips |
 | v0.1.x | Initial release: three decks, node geometries, drag-and-drop, click-to-attack, NPC opponent |

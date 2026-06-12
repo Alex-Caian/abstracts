@@ -18,9 +18,11 @@ function selectUnit(ref){
   const u=getUnit(ref);
   const e=enemy();
   const faceTxt = e.abstractUnit ? `${e.abstractUnit.name}'s form (it shields their core)` : "their exposed core";
+  const linked = linkedAt(you(), ref.idx);
   ui.targeting={
     mode:'attack',
-    hint:`Attack: click an enemy follower or ${faceTxt}.`+(u.invoke>0?` Or press Invoke +${u.invoke}.`:''),
+    hint:`Attack: click an enemy follower or ${faceTxt}.`
+      +(u.invoke>0 ? (linked?` Or press Invoke +${u.invoke}.`:` (Isolated — it needs a linked neighbour to invoke.)`) : ''),
     onPick:(t)=>{ const r=ui.selUnit; clearSelection(); attackWith(you(),r,t); }
   };
   renderAll();
@@ -41,8 +43,12 @@ document.addEventListener('click',ev=>{
     if(!c.target){ const idx=ui.selCard; ui.selCard=null; castSpell(p,idx,null); return; }
     if(c.target==='enemyUnit' && unitRefs(enemy()).length===0){ flashHint('No enemy follower to target.'); ui.selCard=null; renderAll(); return; }
     if(c.target==='friendUnit' && unitRefs(p).length===0){ flashHint('You have no follower to target.'); ui.selCard=null; renderAll(); return; }
+    if(c.target==='emptyNode'){
+      if(p.board.length<=4){ flashHint('The diagram can tighten no further.'); ui.selCard=null; renderAll(); return; }
+      if(!p.board.some(s=>!s)){ flashHint('No empty node to dissolve.'); ui.selCard=null; renderAll(); return; }
+    }
     ui.targeting={mode:c.target,
-      hint:c.target==='enemyUnit'?'Choose an enemy follower.':'Choose one of your followers.',
+      hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':'Choose one of your followers.'),
       onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); castSpell(p,idx,ref); }};
     renderAll(); return;
   }
@@ -55,6 +61,11 @@ document.addEventListener('click',ev=>{
     /* the centre IS the face (form or exposed core); the strip works too */
     if(t.mode==='attack' && (foeCentre || ev.target.closest('#strip-foe'))){ t.onPick({pi:1,zone:'hero'}); return; }
     if(t.mode==='friendUnit' && youUnit){ t.onPick({pi:0,zone:'board',idx:+youUnit.dataset.idx}); return; }
+    if(t.mode==='emptyNode'){
+      const nodeEl=ev.target.closest('.node[data-side="you"]');
+      if(nodeEl && !p.board[+nodeEl.dataset.idx]){ t.onPick({pi:0,zone:'node',idx:+nodeEl.dataset.idx}); return; }
+      clearSelection(); renderAll(); return;
+    }
     if(t.mode==='attack' && youUnit){
       const idx=+youUnit.dataset.idx, u=p.board[idx];
       if(ui.selUnit && ui.selUnit.idx===idx){ clearSelection(); renderAll(); return; }

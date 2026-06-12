@@ -12,13 +12,15 @@ function makePlayer(archKey, name, isAI){
     arch:archKey, name, isAI,
     hp:START_HP,            // core HP — the latent Abstract at the centre
     mana:0, maxMana:0,
-    deck:shuffle(a.deck.slice()), hand:[], board:Array(a.angles.length).fill(null),
+    angles:a.angles.slice(),  // per-player geometry: Distillation mutates it
+    nodes:a.nodes.slice(),
+    deck:shuffle(a.deck.slice()), hand:[], used:[],   // used = the spent litany; reshuffled when the deck empties
+    board:Array(a.angles.length).fill(null),
     invoke:0,               // invoke is a currency now: accrues forever
-    summonCost:SUMMON_BASE, // rises by SUMMON_STEP after each summon
+    summonCost:(a.abstract.summonBase ?? SUMMON_BASE), // rises by SUMMON_STEP after each summon
     summonCount:0,
     abilityUsed:false,      // active ability is once per turn
-    abstractUnit:null,      // the manifested form: {name,hp,maxHp} — HP only
-    fatigue:0
+    abstractUnit:null       // the manifested form: {name,hp,maxHp} — HP only
   };
 }
 function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
@@ -33,6 +35,12 @@ function unitRefs(p){
   p.board.forEach((u,i)=>{ if(u) out.push({pi,zone:'board',idx:i}); });
   return out;
 }
+/* a node is linked if an adjacent node on the ring is occupied */
+function linkedAt(p, idx){
+  const n=p.board.length;
+  return !!(p.board[(idx+1)%n] || p.board[(idx-1+n)%n]);
+}
+function diagramComplete(p){ return p.board.every(u=>u); }
 function clearSelection(){ ui.selCard=null; ui.selUnit=null; ui.targeting=null; }
 function newGame(humanArch){
   const others = Object.keys(ARCH).filter(k=>k!==humanArch);

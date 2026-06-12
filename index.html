@@ -62,28 +62,30 @@
   <ul>
     <li>Each turn you gain a mana crystal (up to 10), refill mana, and draw a card.</li>
     <li><b>Drag</b> followers from your hand onto the empty <b>nodes</b> (dots) of your geometry. Each node grants a different bonus — hover a dot to see it.</li>
-    <li>Spells are cast by <b>clicking</b> them; they cost mana and resolve immediately (some need a target).</li>
+    <li>Spells are cast by <b>clicking</b> them; they resolve immediately (some need a target).</li>
+    <li>Each follower may act once per turn — but not the turn it is played (<b>zZ</b>).</li>
+    <li>Your deck never runs dry: when it empties, your spent cards shuffle back in — <b>the litany begins anew</b>. But a card drawn to a full hand is <b>forgotten</b>, gone from the cycle for good.</li>
+    <li>From turn 25, both cores <b>decay</b> at the start of each turn (1, then 2, then 3…). No duel lasts forever.</li>
   </ul>
-  <h4>Acting with followers</h4>
-  <p>Each follower may act once per turn — but not the turn it is played (it shows a <b>zZ</b> badge while it rests). Click a glowing follower and all valid targets light up:</p>
+  <h4>The ritual: links and essence</h4>
+  <p>Followers played on <b>adjacent</b> nodes form a <b>link</b> — the edge between them lights up. Links are the conduit of the ritual:</p>
   <ul>
-    <li><b>Attack</b> — click an enemy follower, or the enemy face: their manifested form if one is in play, their exposed core if not.</li>
-    <li><b>Invoke</b> — instead of attacking, press the violet <b>Invoke</b> button to channel the follower's invoke value (its violet badge) into your essence.</li>
+    <li><b>Invoke</b> — a follower with an invoke value (the violet badge) may channel it into your essence instead of attacking, but <b>only while linked</b>. An isolated follower cannot invoke (its badge dims). Not every follower can invoke.</li>
+    <li><b>Communion</b> — start your turn with <b>every node filled</b> and the complete circle channels <b>+1 essence per follower</b>, passively. Your opponent will want to break the circle before your turn comes.</li>
   </ul>
-  <h4>Invoke is a currency</h4>
-  <p>Invoke accrues without limit and never goes to waste. You spend it on two things:</p>
+  <h4>Essence is a currency</h4>
   <ul>
-    <li><b>Summoning your form</b> — 10 invoke the first time, then 15, 20… each time it is unmade. Press <b>Summon</b> when you can afford it.</li>
+    <li><b>Summoning your form</b> costs essence — 8 for Fear, 12 for Knowledge, 15 for Justice — and 5 more each time it is unmade.</li>
     <li><b>Your form's ability</b> — once per turn, while your form is in play, pay its cost to unleash it.</li>
   </ul>
   <h4>The manifested form</h4>
-  <p>While your form is in play it <b>shields your core completely</b> — all damage strikes the form, and your core cannot be touched until the form is unmade. The form cannot attack or invoke; it protects, exerts its <b>aura</b> each turn, triggers its <b>arrival power</b>, and offers its <b>ability</b>.</p>
+  <p>While your form is in play it <b>shields your core completely</b> — all damage strikes the form until it is unmade. The form cannot attack or invoke; it protects, triggers its <b>arrival</b> power, exerts its <b>aura</b> (all auras trigger at the start of your turn), and offers its <b>ability</b>.</p>
   <ul>
-    <li><b>FEAR ITSELF</b> (9 HP) — arrival: empty nodes fill with 1/1 Terror Spiders. Aura: 2 damage to the enemy. Creeping Terror (4): all enemy followers −1 Attack.</li>
-    <li><b>JUSTICE INCARNATE</b> (12 HP) — arrival: Day of Judgement, each enemy follower takes damage equal to its own Attack. Aura: 3 damage to the strongest enemy follower. Verdict (5): destroy the strongest enemy follower.</li>
-    <li><b>KNOWLEDGE ABSOLUTE</b> (10 HP) — arrival: Awakening, your followers gain +1 invoke value, draw a card. Aura: 2 damage to the enemy and draw a card. Insight (3): draw 2 cards.</li>
+    <li><b>FEAR</b> (6 HP, summons at 8) — cheap to conjure, quick to fall, always returning. Arrival: empty nodes fill with 1/1 Terror Spiders. Aura: 3 damage and a random enemy follower is Terrified (cannot act next turn). Brood (3): summon a 2/2 Giant Spider that deals 1 damage on death.</li>
+    <li><b>JUSTICE</b> (10 HP) — arrival: Day of Judgement, each enemy follower takes damage equal to its own Attack. Aura: if outnumbered, 2 damage to a random enemy follower; otherwise restore 1 HP. Verdict (6): destroy the strongest enemy follower.</li>
+    <li><b>KNOWLEDGE</b> (10 HP, summons at 12) — arrival: Awakening, your followers gain +1 invoke value, draw a card. Aura: draw a card and gain 1 mana. Insight (4): draw 2 cards; in communion, also gain 1 essence and deal 1 damage. Knowledge alone can <b>distil</b> its diagram: spells dissolve empty nodes forever, the circle tightens, and communion comes closer.</li>
   </ul>
-  <p>Press <b>Esc</b>, click <b>Cancel</b>, or click empty ground to deselect. Every turn is the same dilemma: press the attack, hold the line, or hasten the summoning.</p>
+  <p>Press <b>Esc</b>, click <b>Cancel</b>, or click empty ground to deselect. Every turn is the same dilemma: press the attack, hold the line, or feed the circle.</p>
   <div style="text-align:center;margin-top:14px"><button class="btn primary" id="btn-help-close">Close</button></div>
 </div></div>
 

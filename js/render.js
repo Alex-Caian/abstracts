@@ -17,13 +17,16 @@ function buildBoards(){
     const arch=ARCH[p.arch];
     const el=document.getElementById('board-'+side);
     el.className='board '+arch.css;
-    const pts=arch.angles.map(nodePos);
+    const pts=p.angles.map(nodePos);
     let svg=`<svg class="geo-lines" viewBox="0 0 100 100" preserveAspectRatio="none">`;
-    svg+=`<polygon points="${pts.map(pt=>pt.x+','+pt.y).join(' ')}"></polygon>`;
-    pts.forEach(pt=>{ svg+=`<line x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
+    pts.forEach((pt,i)=>{
+      const q=pts[(i+1)%pts.length];
+      svg+=`<line class="edge" data-e="${i}" x1="${pt.x}" y1="${pt.y}" x2="${q.x}" y2="${q.y}"></line>`;
+    });
+    pts.forEach(pt=>{ svg+=`<line class="spoke" x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
     svg+='</svg>';
     let html=svg+`<div class="board-label">${p.name} · ${arch.geoName}</div>`;
-    arch.angles.forEach((ang,i)=>{
+    p.angles.forEach((ang,i)=>{
       const pt=nodePos(ang);
       html+=`<div class="node" data-side="${side}" data-idx="${i}" style="left:${pt.x}%;top:${pt.y}%"></div>`;
     });
@@ -42,7 +45,7 @@ function buildBoards(){
   const ab=a.abstract.ability;
   document.getElementById('nodes-help').innerHTML =
     `<b>${a.geoName}</b><br>`+
-    a.nodes.map((k,i)=>`<b>Node ${i+1}</b> — ${NODE_FX[k].txt}`).join('<br>')+
+    you().nodes.map((k,i)=>`<b>Node ${i+1}</b> — ${NODE_FX[k].txt}`).join('<br>')+
     `<br><br><b>${a.abstract.name}</b> (${a.abstract.hp} HP form)<br>`+
     `${a.abstract.onSummonTxt}<br>${a.abstract.auraTxt}<br>`+
     `<b>${ab.name}</b> (${ab.cost} invoke, once per turn) — ${ab.txt}`;
@@ -59,19 +62,28 @@ function renderStrip(side,p){
   const el=document.getElementById('strip-'+side);
   el.innerHTML=`<span class="who">${ARCH[p.arch].name}</span><span class="tag">${p.name}</span>
     <span class="stat mana"><b>${p.mana}/${p.maxMana}</b><span class="lbl">Mana</span></span>
-    <span class="stat inv"><b>${p.invoke}</b><span class="lbl">Invoke</span></span>
+    <span class="stat inv"><b>${p.invoke}</b><span class="lbl">Essence</span></span>
     <span class="handcount">${p.isAI? p.hand.length+' cards in hand · ':''}${p.deck.length} in deck</span>`;
   el.dataset.side=side;
 }
 /* tooltip content for a follower */
-function unitTipHtml(u, archKey, nodeIdx){
+function unitTipHtml(u, owner, nodeIdx){
   const c = CARDS[u.cid];
   const lines=[];
   if(c && c.txt) lines.push(`<b>${c.txt}</b>`);
-  if(u.cid==='tok_spider') lines.push(`<b>Skittered in when FEAR took form.</b>`);
-  if(u.invoke>0) lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
+  if(u.cid==='tok_spider') lines.push(`<b>Born of FEAR — the circle sustains itself.</b>`);
+  if(u.cid==='tok_gspider') lines.push(`<b>Brood-spawn. On death: deal 1 damage.</b>`);
+  if(u.cid==='tok_prophet') lines.push(`<b>Conjured — a voice in the chorus.</b>`);
+  if(u.cid==='tok_footnote') lines.push(`<b>All that remains of something greater.</b>`);
+  if(u.invoke>0){
+    lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
+    if(!linkedAt(owner,nodeIdx)) lines.push(`<b>Isolated</b> — needs a linked neighbour to invoke.`);
+  } else if(c){
+    lines.push(`<span class="tip-dim">Cannot invoke.</span>`);
+  }
+  if(u.terrified) lines.push(`<b>Terrified</b> — cannot act this turn.`);
   if(u.sick) lines.push(`Resting — can act next turn.`);
-  lines.push(`<span class="tip-dim">Played on: ${NODE_FX[ARCH[archKey].nodes[nodeIdx]].txt}</span>`);
+  lines.push(`<span class="tip-dim">Played on: ${NODE_FX[owner.nodes[nodeIdx]].txt}</span>`);
   return lines.map(l=>`<div>${l}</div>`).join('');
 }
 /* tooltip content for an Abstract centre (yours or theirs) */
@@ -81,7 +93,8 @@ function centreTipHtml(p){
   if(p.abstractUnit)
     lines.push(`<b>Manifested</b> — ${p.abstractUnit.hp}/${p.abstractUnit.maxHp} HP, shielding the core (${p.hp} HP) beneath.`);
   else
-    lines.push(`<b>Exposed core</b> — ${p.hp}/${START_HP} HP. ${p.summonCount>0?'Re-summon':'Summon'} at ${p.summonCost} invoke (has ${p.invoke}).`);
+    lines.push(`<b>Exposed core</b> — ${p.hp}/${START_HP} HP. ${p.summonCount>0?'Re-summon':'Summon'} at ${p.summonCost} essence (has ${p.invoke}).`);
+  if(diagramComplete(p)) lines.push(`<b>In communion</b> — the complete circle channels +${p.board.length} essence at the start of ${p.isAI?'its':'your'} turn.`);
   lines.push(`<b>Arrival:</b> ${a.onSummonTxt.replace('On arrival: ','')}`);
   lines.push(`<b>Aura:</b> ${a.auraTxt.replace('Aura: ','')}`);
   lines.push(`<b>${ab.name}</b> (${ab.cost} invoke, once per turn): ${ab.txt}`);
@@ -94,23 +107,32 @@ function renderBoard(side,p){
     const i=+node.dataset.idx, u=p.board[i];
     node.classList.remove('playable','drag-over','empty');
     if(u){
+      const isolated = !linkedAt(p,i);
       node.innerHTML=`<div class="unit" data-side="${side}" data-idx="${i}">
-        ${u.invoke>0?`<div class="uinv">${u.invoke}</div>`:''}
-        ${u.sick?`<div class="usick">zZ</div>`:''}
+        ${u.invoke>0?`<div class="uinv ${isolated?'dim':''}">${u.invoke}</div>`:''}
+        ${u.terrified?`<div class="uterr">✕</div>`:(u.sick?`<div class="usick">zZ</div>`:'')}
         <div class="uname">${u.name}</div>
         <div class="ustats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
-        <div class="hover-tip">${unitTipHtml(u,p.arch,i)}</div>
+        <div class="hover-tip">${unitTipHtml(u,p,i)}</div>
       </div>`;
       const uEl=node.firstElementChild;
       const mine = side==='you';
       if(mine && G.turn===0 && u.ready && !G.over) uEl.classList.add('ready');
       if(mine && G.turn===0 && !u.ready && !u.sick) uEl.classList.add('acted');
       if(mine && u.sick) uEl.classList.add('sick');
+      if(u.terrified) uEl.classList.add('terrified');
     } else {
       node.classList.add('empty');
-      node.innerHTML=`<div class="dot"></div><div class="node-tip">${NODE_FX[arch.nodes[i]].txt}</div>`;
+      node.innerHTML=`<div class="dot"></div><div class="node-tip">${NODE_FX[p.nodes[i]].txt}</div>`;
     }
   });
+  /* ring edges: lit between adjacent occupied nodes; full circle = communion */
+  const nN=p.board.length;
+  board.querySelectorAll('svg .edge').forEach(edge=>{
+    const i=+edge.dataset.e;
+    edge.classList.toggle('lit', !!(p.board[i] && p.board[(i+1)%nN]));
+  });
+  board.classList.toggle('communion', diagramComplete(p));
   /* centre: the HP lives here now, manifested or exposed */
   const c=board.querySelector('.centre');
   const inner=c.querySelector('.sig-inner');
@@ -181,7 +203,7 @@ function renderCmd(){
   if(showActions){
     const u=getUnit(ui.selUnit);
     const bi=document.getElementById('btn-invoke');
-    const canInvoke = u && u.invoke>0;
+    const canInvoke = u && u.invoke>0 && linkedAt(p, ui.selUnit.idx);
     bi.style.display = canInvoke?'inline-block':'none';
     if(canInvoke) bi.textContent=`Invoke +${u.invoke}`;
   }
@@ -202,6 +224,9 @@ function applyHighlights(){
     }
     if(t.mode==='friendUnit'){
       document.querySelectorAll('#board-you .unit').forEach(e=>e.classList.add('friend-target'));
+    }
+    if(t.mode==='emptyNode'){
+      document.querySelectorAll('#board-you .node.empty').forEach(e=>e.classList.add('playable'));
     }
   }
   if(ui.selUnit){

@@ -177,3 +177,13 @@ button{font-family:var(--body);cursor:pointer}
 /* ---------- pointer-drag ghost (mouse & touch) ---------- */
 .drag-ghost{position:fixed;z-index:80;pointer-events:none;transform:translate(-50%,-65%) rotate(3deg);opacity:.9;box-shadow:0 14px 32px rgba(0,0,0,.65)}
 .drag-ghost .hover-tip{display:none}
+
+/* ---------- ritual links & communion ---------- */
+.board svg.geo-lines line.spoke{stroke:var(--accent);stroke-opacity:.18}
+.board svg.geo-lines line.edge{stroke:var(--accent);stroke-opacity:.15;stroke-width:1.2;transition:stroke-opacity .3s}
+.board svg.geo-lines line.edge.lit{stroke-opacity:.95;stroke-width:1.8;filter:drop-shadow(0 0 3px var(--accent))}
+.board.communion svg.geo-lines line.edge.lit{animation:edgehum 1.8s infinite}
+@keyframes edgehum{0%,100%{stroke-opacity:.95}50%{stroke-opacity:.45}}
+.unit .uinv.dim{opacity:.35;box-shadow:none}
+.unit .uterr{position:absolute;top:-8px;left:-6px;background:var(--surface);border:1px solid var(--hp);color:var(--hp);font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px}
+.unit.terrified{opacity:.7}

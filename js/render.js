@@ -141,12 +141,13 @@ function renderBoard(side,p){
   if(p.abstractUnit){
     const u=p.abstractUnit;
     ring.style.strokeDashoffset = circ*(1-Math.max(0,u.hp)/u.maxHp);
-    inner.innerHTML=`<div class="sig-name">${u.name}</div>
+    inner.innerHTML=`<div class="sig-name ${u.name.length>=8?'long':''}">${u.name}</div>
       <div class="sig-stats"><span class="uhp">${u.hp}</span><span class="sig-max">/ ${u.maxHp}</span></div>
       <div class="sig-meter">shielding core · ${p.hp}</div>`;
   } else {
     ring.style.strokeDashoffset = circ*(1-Math.max(0,p.hp)/START_HP);
-    inner.innerHTML=`<div class="sig-name">${ARCH[p.arch].abstract.name}</div>
+    const nm=ARCH[p.arch].abstract.name;
+    inner.innerHTML=`<div class="sig-name ${nm.length>=8?'long':''}">${nm}</div>
       <div class="sig-stats"><span class="uhp">${p.hp}</span><span class="sig-max">/ ${START_HP}</span></div>
       <div class="sig-meter">${p.invoke} / ${p.summonCost} to ${p.summonCount>0?'re-':''}summon</div>`;
   }

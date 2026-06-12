@@ -15,7 +15,7 @@ const ARCH = {
       onSummonTxt:'On arrival: every empty node fills with a 1/1 Terror Spider (invoke 1).',
       auraTxt:'Aura: the enemy suffers 3 damage and a random enemy follower is Terrified (cannot act next turn).',
       ability:{name:'Brood',cost:3,txt:'Summon a 2/2 Giant Spider on an empty node. On death it deals 1 damage.'}},
-    blurb:'Aggression in numbers. Flood the pentagon, go for the throat — and conjure FEAR cheaply, again and again.',
+    blurb:'Aggressive playstyle. Conjure spiders & leverage strength in numbers.',
     desc:'The pentagon — five versatile nodes around a gathering dark.'
   },
   justice: {
@@ -27,7 +27,7 @@ const ARCH = {
       onSummonTxt:'On arrival: Day of Judgement — each enemy follower takes damage equal to its own Attack.',
       auraTxt:'Aura: if the enemy has more followers than you, deal 2 damage to a random enemy follower; otherwise restore 1 HP to your form or core.',
       ability:{name:'Verdict',cost:6,txt:'Destroy the enemy follower with the highest Attack.'}},
-    blurb:'Few but mighty. Three heavy champions, an easy circle, and a gavel worth saving for.',
+    blurb:'Defensive playstyle. Field few but mighty champions & punish aggression with judgement.',
     desc:'The triangle — three nodes only, each one a powerful oath.'
   },
   knowledge: {
@@ -39,7 +39,7 @@ const ARCH = {
       onSummonTxt:'On arrival: Awakening — your followers gain +1 invoke value; draw a card.',
       auraTxt:'Aura: draw a card and gain 1 mana.',
       ability:{name:'Insight',cost:4,txt:'Draw 2 cards. In communion: also gain 1 essence and deal 1 damage to the enemy.'}},
-    blurb:'The engine. Eight sprawling nodes, refined by deletion — distil the diagram, conjure prophets, and let the spiral compound.',
+    blurb:'Control playstyle. Out-draw everyone, distil your diagram & rule the late game.',
     desc:'The octagon — eight nodes, made elegant by deletion.'
   }
 };

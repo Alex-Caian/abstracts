@@ -187,3 +187,6 @@ button{font-family:var(--body);cursor:pointer}
 .unit .uinv.dim{opacity:.35;box-shadow:none}
 .unit .uterr{position:absolute;top:-8px;left:-6px;background:var(--surface);border:1px solid var(--hp);color:var(--hp);font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px}
 .unit.terrified{opacity:.7}
+
+/* long abstract names (KNOWLEDGE) stay inside the sigil ring */
+.centre .sig-name.long{font-size:10.5px;letter-spacing:.07em}

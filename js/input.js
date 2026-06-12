@@ -5,6 +5,12 @@
    command-bar buttons have their own listeners and are excluded from
    the delegated handler (clicks would otherwise bubble up and be read
    as background clicks, cancelling targeting).
+
+   Followers are played by dragging. This uses POINTER EVENTS, not the
+   HTML5 drag-and-drop API: pointer events fire identically for mouse
+   and touch, so the same code path works on desktop and mobile. A
+   ghost card follows the pointer; drop target is resolved with
+   document.elementFromPoint.
    ===================================================================== */
 function selectUnit(ref){
   ui.selCard=null;
@@ -20,6 +26,7 @@ function selectUnit(ref){
   renderAll();
 }
 document.addEventListener('click',ev=>{
+  if(dragPtr.suppressClick){ dragPtr.suppressClick=false; return; }
   if(!G || G.over || G.turn!==0) return;
   if(ev.target.closest('#cmdbar') || ev.target.closest('.overlay') || ev.target.closest('#sidebar')) return;
   const p=you();
@@ -45,7 +52,7 @@ document.addEventListener('click',ev=>{
     const foeCentre=ev.target.closest('#board-foe .centre');
     const youUnit=ev.target.closest('#board-you .unit');
     if((t.mode==='enemyUnit'||t.mode==='attack') && foeUnit){ t.onPick({pi:1,zone:'board',idx:+foeUnit.dataset.idx}); return; }
-    /* the centre IS the face now (form or exposed core); the strip works too */
+    /* the centre IS the face (form or exposed core); the strip works too */
     if(t.mode==='attack' && (foeCentre || ev.target.closest('#strip-foe'))){ t.onPick({pi:1,zone:'hero'}); return; }
     if(t.mode==='friendUnit' && youUnit){ t.onPick({pi:0,zone:'board',idx:+youUnit.dataset.idx}); return; }
     if(t.mode==='attack' && youUnit){
@@ -66,48 +73,88 @@ document.addEventListener('click',ev=>{
   }
   if(ui.selCard!==null||ui.selUnit){ clearSelection(); renderAll(); }
 });
-/* ---- drag & drop: followers from hand onto your nodes ----
-   NOTE: never re-render the hand during a drag — destroying the dragged
-   element mid-drag silently kills the HTML5 drag operation. */
-document.addEventListener('dragstart',ev=>{
-  const cardEl=ev.target.closest && ev.target.closest('.card[data-hand]');
-  if(!cardEl || !G || G.over || G.turn!==0){ ev.preventDefault(); return; }
-  const i=+cardEl.dataset.hand, c=CARDS[you().hand[i]];
-  if(!c || c.t!=='f' || c.cost>you().mana){ ev.preventDefault(); return; }
-  ui.dragCard=i; ui.selCard=null; ui.selUnit=null; ui.targeting=null;
-  if(ev.dataTransfer){ ev.dataTransfer.setData('text/plain',String(i)); ev.dataTransfer.effectAllowed='move'; }
-  cardEl.classList.add('dragging');
+
+/* ---- pointer-based drag & drop (works on touch AND mouse) ----
+   NOTE: never re-render the hand during a drag — destroying the source
+   element mid-drag would break pointer capture. Node highlights are
+   applied directly, not via renderAll(). */
+let dragPtr = {idx:null, cardEl:null, ghost:null, started:false, sx:0, sy:0, overNode:null, suppressClick:false};
+
+function dragNodeAtPoint(x,y){
+  let el=null;
+  if(dragPtr.ghost) dragPtr.ghost.style.display='none';
+  try{ el=document.elementFromPoint(x,y); }catch(e){ el=null; }
+  if(dragPtr.ghost) dragPtr.ghost.style.display='';
+  const node = el && el.closest && el.closest('.node[data-side="you"]');
+  return (node && !you().board[+node.dataset.idx]) ? node : null;
+}
+function dragStartGhost(x,y){
+  dragPtr.started=true;
+  ui.dragCard=dragPtr.idx; ui.selCard=null; ui.selUnit=null; ui.targeting=null;
+  const c=CARDS[you().hand[dragPtr.idx]];
+  const g=dragPtr.cardEl.cloneNode(true);
+  g.classList.add('drag-ghost'); g.classList.remove('selected');
+  g.style.width=(dragPtr.cardEl.offsetWidth||122)+'px';
+  document.body.appendChild(g); dragPtr.ghost=g;
+  dragPtr.cardEl.classList.add('dragging');
   document.querySelectorAll('#board-you .node').forEach(n=>{
     if(!you().board[+n.dataset.idx]) n.classList.add('playable');
   });
   document.getElementById('action-hint').textContent=`Drop ${c.name} on a glowing node — each node grants a different bonus.`;
+  dragMoveGhost(x,y);
+}
+function dragMoveGhost(x,y){
+  if(dragPtr.ghost){ dragPtr.ghost.style.left=x+'px'; dragPtr.ghost.style.top=y+'px'; }
+}
+function dragCleanup(){
+  if(dragPtr.ghost) dragPtr.ghost.remove();
+  if(dragPtr.cardEl) dragPtr.cardEl.classList.remove('dragging');
+  document.querySelectorAll('.node.playable,.node.drag-over').forEach(n=>n.classList.remove('playable','drag-over'));
+  ui.dragCard=null;
+  dragPtr.idx=null; dragPtr.cardEl=null; dragPtr.ghost=null; dragPtr.started=false; dragPtr.overNode=null;
+}
+document.addEventListener('pointerdown',ev=>{
+  if(!G || G.over || G.turn!==0) return;
+  if(ev.button!==undefined && ev.button!==0) return;
+  const cardEl=ev.target.closest && ev.target.closest('.card.can-drag');
+  if(!cardEl) return;
+  const i=+cardEl.dataset.hand, c=CARDS[you().hand[i]];
+  if(!c || c.t!=='f' || c.cost>you().mana) return;
+  dragPtr.idx=i; dragPtr.cardEl=cardEl; dragPtr.started=false;
+  dragPtr.sx=ev.clientX; dragPtr.sy=ev.clientY;
+  if(cardEl.setPointerCapture){ try{ cardEl.setPointerCapture(ev.pointerId); }catch(e){} }
 });
-document.addEventListener('dragover',ev=>{
-  if(ui.dragCard===null) return;
-  const node=ev.target.closest && ev.target.closest('#board-you .node');
-  if(node && !you().board[+node.dataset.idx]){
-    ev.preventDefault();
-    if(ev.dataTransfer) ev.dataTransfer.dropEffect='move';
-    node.classList.add('drag-over');
+document.addEventListener('pointermove',ev=>{
+  if(dragPtr.idx===null) return;
+  if(!dragPtr.started){
+    if(Math.hypot(ev.clientX-dragPtr.sx, ev.clientY-dragPtr.sy) < 8) return;
+    dragStartGhost(ev.clientX, ev.clientY);
+  }
+  dragMoveGhost(ev.clientX, ev.clientY);
+  const node=dragNodeAtPoint(ev.clientX, ev.clientY);
+  if(dragPtr.overNode && dragPtr.overNode!==node) dragPtr.overNode.classList.remove('drag-over');
+  dragPtr.overNode=node;
+  if(node) node.classList.add('drag-over');
+  if(ev.cancelable) ev.preventDefault();
+});
+document.addEventListener('pointerup',ev=>{
+  if(dragPtr.idx===null) return;
+  const i=dragPtr.idx, started=dragPtr.started;
+  const node = started ? dragNodeAtPoint(ev.clientX, ev.clientY) : null;
+  dragCleanup();
+  if(started){
+    dragPtr.suppressClick=true;                       /* swallow the click that follows pointerup */
+    setTimeout(()=>{ dragPtr.suppressClick=false; },50);
+    if(node) playFollower(you(), i, +node.dataset.idx);
+    else renderAll();
   }
 });
-document.addEventListener('dragleave',ev=>{
-  const node=ev.target.closest && ev.target.closest('#board-you .node');
-  if(node) node.classList.remove('drag-over');
+document.addEventListener('pointercancel',()=>{
+  if(dragPtr.idx!==null){ const started=dragPtr.started; dragCleanup(); if(started) renderAll(); }
 });
-document.addEventListener('drop',ev=>{
-  if(ui.dragCard===null) return;
-  ev.preventDefault();
-  const node=ev.target.closest && ev.target.closest('#board-you .node');
-  const i=ui.dragCard; ui.dragCard=null;
-  if(node && !you().board[+node.dataset.idx]) playFollower(you(),i,+node.dataset.idx);
-  else renderAll();
-});
-document.addEventListener('dragend',()=>{
-  document.querySelectorAll('.node.playable,.node.drag-over').forEach(n=>n.classList.remove('playable','drag-over'));
-  document.querySelectorAll('.card.dragging').forEach(c=>c.classList.remove('dragging'));
-  if(ui.dragCard!==null){ ui.dragCard=null; renderAll(); }
-});
+/* native HTML5 drag would fight the pointer implementation — disable it */
+document.addEventListener('dragstart',ev=>ev.preventDefault());
+
 /* ---- command bar buttons ---- */
 document.getElementById('btn-invoke').addEventListener('click',()=>{
   if(!ui.selUnit) return;

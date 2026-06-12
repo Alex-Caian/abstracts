@@ -102,7 +102,7 @@ abstracts/
 - **Zero dependencies.** Vanilla JavaScript with plain `<script>` tags sharing global scope — load order in `index.html` matters and is documented there.
 - **Data-driven design.** Cards, archetypes, and node effects are declarative objects in `cards.js`, `archetypes.js`, and `config.js`. Adding a card is one line; adding an Abstract is one object (geometry, deck, and powers included).
 - **Strict layering.** `engine.js` contains rules and never touches the DOM beyond delegated helpers; `render.js` draws state and contains no rules; `input.js` translates user intent into engine calls.
-- **One quirk worth knowing:** the hand is never re-rendered during a drag — destroying the dragged element mid-drag silently kills the browser's drag operation. Node highlights during drag are applied directly rather than through the normal render pass (see `input.js`).
+- **Touch-first dragging.** Drag-and-drop is built on Pointer Events rather than the HTML5 drag API, so the same code path serves mouse and touch — the game is playable on mobile. A ghost card follows the pointer and the drop target is resolved with `elementFromPoint`. One quirk worth knowing: the hand is never re-rendered during a drag; node highlights are applied directly rather than through the normal render pass (see `input.js`).
 
 ## Releases
 
@@ -110,6 +110,7 @@ The project follows a staging → release flow: changes are developed and playte
 
 | Version | Highlights |
 |---|---|
+| v0.2.1 | Mobile support: drag-and-drop rebuilt on Pointer Events (touch and mouse), ghost-card drag preview, ghost-click suppression |
 | v0.2.0 | Invoke economy rework: the Abstract *is* the player — 30 HP core, pure-HP shield forms, resummoning at escalating cost, arrival powers, once-per-turn abilities, hover tooltips |
 | v0.1.x | Initial release: three decks, node geometries, drag-and-drop, click-to-attack, NPC opponent |
 

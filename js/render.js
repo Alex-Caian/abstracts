@@ -137,7 +137,7 @@ function renderHand(){
     const c=CARDS[cid];
     const aff = c.cost<=p.mana && G.turn===0 && !G.over;
     const drag = aff && c.t==='f';
-    return `<div class="card ${ARCH[c.arch].css} ${aff?'affordable':'unaffordable'} ${ui.selCard===i?'selected':''}" data-hand="${i}" draggable="${drag}">
+    return `<div class="card ${ARCH[c.arch].css} ${aff?'affordable':'unaffordable'} ${drag?'can-drag':''} ${ui.selCard===i?'selected':''}" data-hand="${i}" draggable="false">
       <div class="cost">${c.cost}</div>
       <div class="cname">${c.name}</div>
       <div class="ctype">${c.t==='f'?'Follower':'Spell'}</div>

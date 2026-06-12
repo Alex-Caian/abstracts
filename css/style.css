@@ -126,7 +126,7 @@ button{font-family:var(--body);cursor:pointer}
 .card .cstats .uhp{color:var(--hp);font-family:var(--display);font-weight:700;font-size:17px}
 .card .cstats .cinv{font-size:10px;color:var(--invoke)}
 .card.affordable{cursor:pointer}
-.card[draggable="true"]{cursor:grab}
+.card.can-drag{cursor:grab;touch-action:none}
 .card.dragging{opacity:.5}
 .card.affordable:hover{transform:translateY(-8px);border-color:var(--accent)}
 .card.selected{transform:translateY(-10px);border-color:var(--accent);box-shadow:0 0 18px -6px var(--accent)}
@@ -173,3 +173,7 @@ button{font-family:var(--body);cursor:pointer}
 /* foe board sits near the top edge — flip its tooltips downward */
 #board-foe .hover-tip{bottom:auto;top:calc(100% + 8px)}
 #board-foe .node-tip{bottom:auto;top:calc(50% + 16px)}
+
+/* ---------- pointer-drag ghost (mouse & touch) ---------- */
+.drag-ghost{position:fixed;z-index:80;pointer-events:none;transform:translate(-50%,-65%) rotate(3deg);opacity:.9;box-shadow:0 14px 32px rgba(0,0,0,.65)}
+.drag-ghost .hover-tip{display:none}

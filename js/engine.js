@@ -2,12 +2,17 @@
 /* =====================================================================
    ABSTRACTS — engine.js
    Core rules: turns, drawing, combat, spells, invoking, the Abstract.
+
+   Damage model: each player IS their Abstract. The core (30 HP) sits at
+   the centre. While a manifested form is in play it absorbs ALL face
+   damage — the core cannot be touched until the form is unmade. Damage
+   does not spill over from form to core.
    ===================================================================== */
 
 function drawCards(p,n,silent){
   for(let i=0;i<n;i++){
     if(p.deck.length===0){
-      p.fatigue++; damageHero(p,p.fatigue);
+      p.fatigue++; damageFace(p,p.fatigue);
       log(`${p.name} draw${p.isAI?'s':''} from an empty deck — ${p.fatigue} fatigue damage.`, p.isAI?'foe':'you');
       continue;
     }
@@ -20,11 +25,23 @@ function drawCards(p,n,silent){
   }
 }
 
-function healHero(p,n){ p.hp = Math.min(START_HP, p.hp+n); }
+function healCore(p,n){ p.hp = Math.min(START_HP, p.hp+n); }
 
-function damageHero(p,n){
+/* all "face" damage routes here: the form shields the core */
+function damageFace(p,n){
+  const side = p.isAI?'foe':'you';
+  if(p.abstractUnit){
+    const u=p.abstractUnit;
+    u.hp -= n;
+    floatNum(document.querySelector(`#board-${side} .centre`), -n, true);
+    if(u.hp<=0){
+      p.abstractUnit=null;
+      log(`${u.name} is unmade! ${p.name} ${p.isAI?'stands':'stand'} exposed — it may take form again for ${p.summonCost} invoke.`,'sys');
+    }
+    return;
+  }
   p.hp -= n;
-  floatNum(document.getElementById(p.isAI?'strip-foe':'strip-you'), -n);
+  floatNum(document.getElementById('strip-'+side), -n);
   if(p.hp<=0 && !G.over) endGame(foe(p));
 }
 
@@ -38,12 +55,9 @@ function damageUnit(ref,n){
 function killUnit(ref){
   const p = G.players[ref.pi];
   const u = getUnit(ref); if(!u) return;
-  if(ref.zone==='abstract'){ p.abstractUnit=null; log(`${u.name} is unmade!`, 'sys'); }
-  else {
-    p.board[ref.idx]=null;
-    log(`${u.name} falls.`, p.isAI?'foe':'you');
-    if(u.dr==='dr_dmg2'){ log(`${u.name}'s death curse strikes for 2.`, p.isAI?'foe':'you'); damageHero(foe(p),2); }
-  }
+  p.board[ref.idx]=null;
+  log(`${u.name} falls.`, p.isAI?'foe':'you');
+  if(u.dr==='dr_dmg2'){ log(`${u.name}'s death curse strikes for 2.`, p.isAI?'foe':'you'); damageFace(foe(p),2); }
 }
 
 function startTurn(){
@@ -51,16 +65,15 @@ function startTurn(){
   if(G.turn===0) G.turnNo++;
   p.maxMana = Math.min(MAX_MANA, p.maxMana+1);
   p.mana = p.maxMana;
-  /* ready all units; their summoning rest ends now */
+  p.abilityUsed = false;
   eachUnits(p,u=>{ u.ready=true; u.sick=false; });
-  if(p.abstractUnit){ p.abstractUnit.ready=true; p.abstractUnit.sick=false; }
-  /* abstract aura */
+  /* aura — only while the form is manifested */
   if(p.abstractUnit){
     const a=p.arch, e=foe(p);
-    if(a==='fear'){ log(`${ARCH.fear.abstract.name} radiates dread — 2 damage to ${e.name}.`,'sys'); damageHero(e,2); }
-    if(a==='knowledge'){ log(`${ARCH.knowledge.abstract.name} reveals a burning truth — 2 damage, draw a card.`,'sys'); damageHero(e,2); drawCards(p,1); }
+    if(a==='fear'){ log(`${ARCH.fear.abstract.name} radiates dread — 2 damage.`,'sys'); damageFace(e,2); }
+    if(a==='knowledge'){ log(`${ARCH.knowledge.abstract.name} reveals a burning truth — 2 damage, draw a card.`,'sys'); damageFace(e,2); drawCards(p,1); }
     if(a==='justice'){
-      const refs=unitRefs(e,false);
+      const refs=unitRefs(e);
       if(refs.length){
         let best=refs[0]; refs.forEach(r=>{ if(getUnit(r).atk>getUnit(best).atk) best=r; });
         log(`${ARCH.justice.abstract.name} passes verdict — 3 damage to ${getUnit(best).name}.`,'sys');
@@ -108,30 +121,31 @@ function castSpell(p, handIdx, targetRef){
 function resolveFx(fx,p,ref,self){
   const e = foe(p);
   switch(fx){
-    case 'whisper': { const refs=unitRefs(e,false); if(refs.length){ const r=refs[Math.floor(Math.random()*refs.length)]; const u=getUnit(r); u.atk=Math.max(0,u.atk-1); log(`${u.name} loses 1 Attack.`,'sys'); } break; }
-    case 'heal2': healHero(p,2); break;
+    case 'whisper': { const refs=unitRefs(e); if(refs.length){ const r=refs[Math.floor(Math.random()*refs.length)]; const u=getUnit(r); u.atk=Math.max(0,u.atk-1); log(`${u.name} loses 1 Attack.`,'sys'); } break; }
+    case 'heal2': healCore(p,2); break;
     case 'draw1': drawCards(p,1); break;
     case 'draw2': drawCards(p,2); break;
     case 'inv1': gainInvoke(p,1); break;
     case 'inv2': gainInvoke(p,2); break;
-    case 'buffAlly': { const refs=unitRefs(p,false).filter(r=>getUnit(r)!==self); /* "another" follower — never the paladin itself */
+    case 'buffAlly': { const refs=unitRefs(p).filter(r=>getUnit(r)!==self);
       if(refs.length){ const r=refs[Math.floor(Math.random()*refs.length)]; const u=getUnit(r); u.atk+=1;u.hp+=1;u.maxHp+=1; log(`${u.name} gains +1/+1.`,'sys'); } break; }
     case 'dmg2': damageUnit(ref,2); break;
     case 'dmg3': damageUnit(ref,3); break;
     case 'chill': damageUnit(ref,2); gainInvoke(p,1); break;
     case 'surge': damageUnit(ref,4); drawCards(p,1); break;
-    case 'aoe2': unitRefs(e,false).reverse().forEach(r=>damageUnit(r,2)); break;
-    case 'tribunal': unitRefs(e,false).reverse().forEach(r=>damageUnit(r,1)); healHero(p,3); break;
+    case 'aoe2': unitRefs(e).reverse().forEach(r=>damageUnit(r,2)); break;
+    case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healCore(p,3); break;
     case 'bless': { const u=getUnit(ref); u.atk+=2;u.hp+=2;u.maxHp+=2; break; }
     case 'sacrifice': { const u=getUnit(ref); const gain=u.invoke+2; killUnit(ref); gainInvoke(p,gain); log(`The rite yields ${gain} Invoke.`,'sys'); break; }
   }
 }
 
+/* invoke accrues forever — it is spent on summons and abilities */
 function gainInvoke(p,n){
-  if(p.summoned) return;
-  p.invoke = Math.min(INVOKE_GOAL, p.invoke+n);
-  if(p.invoke>=INVOKE_GOAL)
-    log(`${p.name} ${p.isAI?'has':'have'} gathered enough essence to summon ${ARCH[p.arch].abstract.name}!`,'sys');
+  const before=p.invoke;
+  p.invoke += n;
+  if(!p.abstractUnit && before<p.summonCost && p.invoke>=p.summonCost)
+    log(`${p.name} ${p.isAI?'has':'have'} gathered enough essence to summon ${ARCH[p.arch].abstract.name} (${p.summonCost}).`,'sys');
 }
 
 function invokeWith(p,ref){
@@ -139,7 +153,7 @@ function invokeWith(p,ref){
   u.ready=false;
   gainInvoke(p,u.invoke);
   floatNum(unitEl(ref), u.invoke, true, 'var(--invoke)');
-  log(`${u.name} invokes (+${u.invoke}) — ${p.invoke}/${INVOKE_GOAL}.`, p.isAI?'foe':'you');
+  log(`${u.name} invokes (+${u.invoke}) — ${p.invoke} essence.`, p.isAI?'foe':'you');
   renderAll();
 }
 
@@ -148,8 +162,9 @@ function attackWith(p, attRef, targetRef){
   a.ready=false;
   if(targetRef.zone==='hero'){
     const t=G.players[targetRef.pi];
-    log(`${a.name} strikes ${t.name} for ${a.atk}.`, p.isAI?'foe':'you');
-    damageHero(t,a.atk);
+    const tgt = t.abstractUnit ? t.abstractUnit.name : `${t.name}'s core`;
+    log(`${a.name} strikes ${tgt} for ${a.atk}.`, p.isAI?'foe':'you');
+    damageFace(t,a.atk);
   } else {
     const d=getUnit(targetRef);
     log(`${a.name} (${a.atk}) clashes with ${d.name} (${d.atk}).`, p.isAI?'foe':'you');
@@ -162,17 +177,53 @@ function attackWith(p, attRef, targetRef){
 }
 
 function summonAbstract(p){
-  if(p.summoned || p.invoke<INVOKE_GOAL || G.over) return;
-  p.summoned=true;
+  if(p.abstractUnit || p.invoke<p.summonCost || G.over) return;
   const a=ARCH[p.arch].abstract;
-  p.abstractUnit = {cid:'abstract', name:a.name, atk:a.atk, hp:a.hp, maxHp:a.hp,
-                    invoke:0, ready:false, sick:true, isAbstract:true};
-  log(`✦ ${a.name} TAKES FORM at the heart of the ${ARCH[p.arch].geoName}. ✦`,'sys');
+  p.invoke -= p.summonCost;
+  p.summonCount++;
+  p.abstractUnit = {name:a.name, hp:a.hp, maxHp:a.hp, isAbstract:true};
+  log(`✦ ${a.name} TAKES FORM (${p.summonCost} invoke${p.summonCount>1?', resummon '+p.summonCount:''}). ✦`,'sys');
+  p.summonCost += SUMMON_STEP;
   const e=foe(p);
-  if(p.arch==='fear'){ eachUnits(e,u=>{u.atk=Math.max(0,u.atk-2);}); log('All enemy followers cower: −2 Attack.','sys'); }
-  if(p.arch==='justice'){ const refs=unitRefs(e,false); if(refs.length){ let best=refs[0]; refs.forEach(r=>{if(getUnit(r).atk>getUnit(best).atk)best=r;}); log(`${getUnit(best).name} is judged and destroyed.`,'sys'); killUnit(best); } }
-  if(p.arch==='knowledge'){ drawCards(p,3); log(`${p.name} draw${p.isAI?'s':''} 3 cards.`,'sys'); }
+  if(p.arch==='fear'){
+    let n=0;
+    p.board.forEach((s,i)=>{ if(!s){ p.board[i]={cid:'tok_spider',name:'Terror Spider',atk:1,hp:1,maxHp:1,invoke:1,dr:null,ready:false,sick:true}; n++; } });
+    log(`${n} Terror Spider${n===1?'':'s'} crawl from the dark.`,'sys');
+  }
+  if(p.arch==='justice'){
+    log('Day of Judgement: the aggressive punish themselves.','sys');
+    unitRefs(e).reverse().forEach(r=>{ const u=getUnit(r); if(u.atk>0) damageUnit(r,u.atk); });
+  }
+  if(p.arch==='knowledge'){
+    eachUnits(p,u=>{u.invoke+=1;});
+    drawCards(p,1);
+    log('Awakening: your followers gain +1 Invoke value.','sys');
+  }
   const cEl=document.querySelector(`#board-${p.isAI?'foe':'you'} .centre`); if(cEl) cEl.classList.add('summoned');
+  renderAll();
+}
+
+/* active ability: once per turn, costs invoke, requires the form */
+function canUseAbility(p){
+  const ab=ARCH[p.arch].abstract.ability;
+  if(!p.abstractUnit || p.abilityUsed || p.invoke<ab.cost || G.over) return false;
+  if(p.arch==='justice' && unitRefs(foe(p)).length===0) return false;
+  return true;
+}
+function useAbility(p){
+  if(!canUseAbility(p)) return;
+  const ab=ARCH[p.arch].abstract.ability;
+  p.invoke -= ab.cost; p.abilityUsed = true;
+  const e=foe(p);
+  log(`${p.abstractUnit.name} channels ${ab.name} (${ab.cost} invoke).`,'sys');
+  if(p.arch==='fear'){ eachUnits(e,u=>{u.atk=Math.max(0,u.atk-1);}); log('All enemy followers lose 1 Attack.','sys'); }
+  if(p.arch==='justice'){
+    const refs=unitRefs(e);
+    let best=refs[0]; refs.forEach(r=>{ if(getUnit(r).atk>getUnit(best).atk) best=r; });
+    log(`${getUnit(best).name} is judged and destroyed.`,'sys');
+    killUnit(best);
+  }
+  if(p.arch==='knowledge'){ drawCards(p,2); }
   renderAll();
 }
 

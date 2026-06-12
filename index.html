@@ -30,7 +30,8 @@
         <button class="btn invoke-btn" id="btn-invoke">Invoke</button>
         <button class="btn" id="btn-cancel">Cancel</button>
       </span>
-      <button class="btn" id="btn-summon">Summon Abstract</button>
+      <button class="btn" id="btn-ability">Ability</button>
+      <button class="btn" id="btn-summon">Summon</button>
       <button class="btn primary" id="btn-end">End Turn</button>
     </div>
     <div class="board-wrap"><div class="board" id="board-you"></div></div>
@@ -55,8 +56,8 @@
 
 <div class="overlay hidden" id="help-overlay"><div class="box" id="help-box">
   <h2>HOW TO PLAY</h2>
-  <h4>The goal</h4>
-  <p>Reduce the enemy hero to 0 HP — by force of arms, or by summoning your <b>Abstract</b>: the living concept your deck serves. Fill your Invoke meter to 10 and the Abstract takes form at the centre of your geometry, with devastating powers.</p>
+  <h4>You are the Abstract</h4>
+  <p>Your <b>core</b> — 30 HP of latent essence — rests at the centre of your geometry. Reduce the enemy core to 0 to win. There is no separate hero: the concept itself is the life you defend.</p>
   <h4>Turns</h4>
   <ul>
     <li>Each turn you gain a mana crystal (up to 10), refill mana, and draw a card.</li>
@@ -64,18 +65,25 @@
     <li>Spells are cast by <b>clicking</b> them; they cost mana and resolve immediately (some need a target).</li>
   </ul>
   <h4>Acting with followers</h4>
-  <p>Each follower may act once per turn — but not the turn it is played (it shows a <b>zZ</b> badge while it rests). Click a glowing follower and all valid attack targets light up:</p>
+  <p>Each follower may act once per turn — but not the turn it is played (it shows a <b>zZ</b> badge while it rests). Click a glowing follower and all valid targets light up:</p>
   <ul>
-    <li><b>Attack</b> — click an enemy follower, their Abstract, or their hero. Followers in combat deal damage to each other.</li>
-    <li><b>Invoke</b> — instead of attacking, press the violet <b>Invoke</b> button to channel the follower's invoke value (its violet badge) into your Abstract's meter.</li>
+    <li><b>Attack</b> — click an enemy follower, or the enemy face: their manifested form if one is in play, their exposed core if not.</li>
+    <li><b>Invoke</b> — instead of attacking, press the violet <b>Invoke</b> button to channel the follower's invoke value (its violet badge) into your essence.</li>
+  </ul>
+  <h4>Invoke is a currency</h4>
+  <p>Invoke accrues without limit and never goes to waste. You spend it on two things:</p>
+  <ul>
+    <li><b>Summoning your form</b> — 10 invoke the first time, then 15, 20… each time it is unmade. Press <b>Summon</b> when you can afford it.</li>
+    <li><b>Your form's ability</b> — once per turn, while your form is in play, pay its cost to unleash it.</li>
+  </ul>
+  <h4>The manifested form</h4>
+  <p>While your form is in play it <b>shields your core completely</b> — all damage strikes the form, and your core cannot be touched until the form is unmade. The form cannot attack or invoke; it protects, exerts its <b>aura</b> each turn, triggers its <b>arrival power</b>, and offers its <b>ability</b>.</p>
+  <ul>
+    <li><b>FEAR ITSELF</b> (9 HP) — arrival: empty nodes fill with 1/1 Terror Spiders. Aura: 2 damage to the enemy. Creeping Terror (4): all enemy followers −1 Attack.</li>
+    <li><b>JUSTICE INCARNATE</b> (12 HP) — arrival: Day of Judgement, each enemy follower takes damage equal to its own Attack. Aura: 3 damage to the strongest enemy follower. Verdict (5): destroy the strongest enemy follower.</li>
+    <li><b>KNOWLEDGE ABSOLUTE</b> (10 HP) — arrival: Awakening, your followers gain +1 invoke value, draw a card. Aura: 2 damage to the enemy and draw a card. Insight (3): draw 2 cards.</li>
   </ul>
   <p>Press <b>Esc</b>, click <b>Cancel</b>, or click empty ground to deselect. Every turn is the same dilemma: press the attack, hold the line, or hasten the summoning.</p>
-  <h4>The Abstract</h4>
-  <p>Once your meter reaches 10, the <b>Summon Abstract</b> button appears. The Abstract enters at the centre, triggers its arrival power, exerts a passive aura at the start of each of your turns, and can attack like a follower. It can be killed — and it will not return.</p>
-  <h4>The geometries</h4>
-  <p><b>Fear</b> — a pentagon: five versatile nodes for a creeping, attritional game.<br>
-  <b>Justice</b> — a triangle: only three nodes, but each blessing is mighty.<br>
-  <b>Knowledge</b> — a hexagon: six nodes of small, compounding advantages.</p>
   <div style="text-align:center;margin-top:14px"><button class="btn primary" id="btn-help-close">Close</button></div>
 </div></div>
 

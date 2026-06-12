@@ -3,19 +3,14 @@
    ABSTRACTS — render.js
    Board construction and all DOM rendering. No game rules live here.
    ===================================================================== */
-
 function nodePos(angleDeg){
   const r=42, a=angleDeg*Math.PI/180;
   return { x:50 + r*Math.cos(a), y:50 + (r-2)*Math.sin(a) };
 }
-
-/* DOM element for a unit ref (board unit or abstract centre) */
 function unitEl(ref){
   const side = ref.pi===0 ? 'you' : 'foe';
-  if(ref.zone==='abstract') return document.querySelector(`#board-${side} .centre`);
   return document.querySelector(`#board-${side} .unit[data-idx="${ref.idx}"]`);
 }
-
 function buildBoards(){
   ['you','foe'].forEach(side=>{
     const p = side==='you'?you():enemy();
@@ -23,7 +18,6 @@ function buildBoards(){
     const el=document.getElementById('board-'+side);
     el.className='board '+arch.css;
     const pts=arch.angles.map(nodePos);
-    /* svg constellation */
     let svg=`<svg class="geo-lines" viewBox="0 0 100 100" preserveAspectRatio="none">`;
     svg+=`<polygon points="${pts.map(pt=>pt.x+','+pt.y).join(' ')}"></polygon>`;
     pts.forEach(pt=>{ svg+=`<line x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
@@ -39,18 +33,20 @@ function buildBoards(){
         <circle class="fill" cx="59" cy="59" r="55" stroke-dasharray="345.6" stroke-dashoffset="345.6"></circle>
       </svg>
       <div class="sig-inner"></div>
+      <div class="hover-tip centre-tip"></div>
     </div>`;
     el.innerHTML=html;
     document.getElementById('strip-'+side).className='hero-strip '+arch.css;
   });
-  /* node help panel */
   const a=ARCH[you().arch];
+  const ab=a.abstract.ability;
   document.getElementById('nodes-help').innerHTML =
     `<b>${a.geoName}</b><br>`+
     a.nodes.map((k,i)=>`<b>Node ${i+1}</b> — ${NODE_FX[k].txt}`).join('<br>')+
-    `<br><br><b>${a.abstract.name}</b> (${a.abstract.atk}/${a.abstract.hp})<br>${a.abstract.summonTxt}<br>${a.abstract.auraTxt}`;
+    `<br><br><b>${a.abstract.name}</b> (${a.abstract.hp} HP form)<br>`+
+    `${a.abstract.onSummonTxt}<br>${a.abstract.auraTxt}<br>`+
+    `<b>${ab.name}</b> (${ab.cost} invoke, once per turn) — ${ab.txt}`;
 }
-
 function renderAll(){
   if(!G) return;
   renderStrip('you',you()); renderStrip('foe',enemy());
@@ -58,17 +54,39 @@ function renderAll(){
   renderHand(); renderCmd();
   applyHighlights();
 }
-
+/* HP now lives at the centre — the strip carries resources only */
 function renderStrip(side,p){
   const el=document.getElementById('strip-'+side);
   el.innerHTML=`<span class="who">${ARCH[p.arch].name}</span><span class="tag">${p.name}</span>
-    <span class="stat hp"><b>${p.hp}</b><span class="lbl">HP</span></span>
     <span class="stat mana"><b>${p.mana}/${p.maxMana}</b><span class="lbl">Mana</span></span>
-    <span class="stat inv"><b>${p.summoned?'✦':p.invoke+'/'+INVOKE_GOAL}</b><span class="lbl">Invoke</span></span>
+    <span class="stat inv"><b>${p.invoke}</b><span class="lbl">Invoke</span></span>
     <span class="handcount">${p.isAI? p.hand.length+' cards in hand · ':''}${p.deck.length} in deck</span>`;
   el.dataset.side=side;
 }
-
+/* tooltip content for a follower */
+function unitTipHtml(u, archKey, nodeIdx){
+  const c = CARDS[u.cid];
+  const lines=[];
+  if(c && c.txt) lines.push(`<b>${c.txt}</b>`);
+  if(u.cid==='tok_spider') lines.push(`<b>Skittered in when FEAR took form.</b>`);
+  if(u.invoke>0) lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
+  if(u.sick) lines.push(`Resting — can act next turn.`);
+  lines.push(`<span class="tip-dim">Played on: ${NODE_FX[ARCH[archKey].nodes[nodeIdx]].txt}</span>`);
+  return lines.map(l=>`<div>${l}</div>`).join('');
+}
+/* tooltip content for an Abstract centre (yours or theirs) */
+function centreTipHtml(p){
+  const a=ARCH[p.arch].abstract, ab=a.ability;
+  const lines=[];
+  if(p.abstractUnit)
+    lines.push(`<b>Manifested</b> — ${p.abstractUnit.hp}/${p.abstractUnit.maxHp} HP, shielding the core (${p.hp} HP) beneath.`);
+  else
+    lines.push(`<b>Exposed core</b> — ${p.hp}/${START_HP} HP. ${p.summonCount>0?'Re-summon':'Summon'} at ${p.summonCost} invoke (has ${p.invoke}).`);
+  lines.push(`<b>Arrival:</b> ${a.onSummonTxt.replace('On arrival: ','')}`);
+  lines.push(`<b>Aura:</b> ${a.auraTxt.replace('Aura: ','')}`);
+  lines.push(`<b>${ab.name}</b> (${ab.cost} invoke, once per turn): ${ab.txt}`);
+  return lines.map(l=>`<div>${l}</div>`).join('');
+}
 function renderBoard(side,p){
   const board=document.getElementById('board-'+side);
   const arch=ARCH[p.arch];
@@ -76,11 +94,12 @@ function renderBoard(side,p){
     const i=+node.dataset.idx, u=p.board[i];
     node.classList.remove('playable','drag-over','empty');
     if(u){
-      node.innerHTML=`<div class="unit" data-side="${side}" data-idx="${i}" title="Node bonus: ${NODE_FX[arch.nodes[i]].txt}">
-        ${u.invoke>0?`<div class="uinv" title="Invoke value">${u.invoke}</div>`:''}
-        ${u.sick?`<div class="usick" title="Just played — can act next turn">zZ</div>`:''}
+      node.innerHTML=`<div class="unit" data-side="${side}" data-idx="${i}">
+        ${u.invoke>0?`<div class="uinv">${u.invoke}</div>`:''}
+        ${u.sick?`<div class="usick">zZ</div>`:''}
         <div class="uname">${u.name}</div>
         <div class="ustats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
+        <div class="hover-tip">${unitTipHtml(u,p.arch,i)}</div>
       </div>`;
       const uEl=node.firstElementChild;
       const mine = side==='you';
@@ -92,31 +111,26 @@ function renderBoard(side,p){
       node.innerHTML=`<div class="dot"></div><div class="node-tip">${NODE_FX[arch.nodes[i]].txt}</div>`;
     }
   });
-  /* centre */
+  /* centre: the HP lives here now, manifested or exposed */
   const c=board.querySelector('.centre');
   const inner=c.querySelector('.sig-inner');
   const ring=c.querySelector('circle.fill');
   const circ=345.6;
-  c.classList.remove('ready-abs');
   if(p.abstractUnit){
     const u=p.abstractUnit;
-    ring.style.strokeDashoffset=0;
+    ring.style.strokeDashoffset = circ*(1-Math.max(0,u.hp)/u.maxHp);
     inner.innerHTML=`<div class="sig-name">${u.name}</div>
-      <div class="sig-stats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
-      ${u.sick?'<div class="sig-meter">resting…</div>':''}`;
-    const mine=side==='you';
-    if(mine && G.turn===0 && u.ready && !G.over) c.classList.add('ready-abs');
-  } else if(p.summoned){
-    ring.style.strokeDashoffset=circ;
-    inner.innerHTML=`<div class="sig-name" style="opacity:.4">${arch.abstract.name}</div><div class="sig-meter">unmade</div>`;
+      <div class="sig-stats"><span class="uhp">${u.hp}</span><span class="sig-max">/ ${u.maxHp}</span></div>
+      <div class="sig-meter">shielding core · ${p.hp}</div>`;
   } else {
-    ring.style.strokeDashoffset = circ*(1-p.invoke/INVOKE_GOAL);
-    inner.innerHTML=`<div class="sig-name">${arch.abstract.name}</div>
-      <div class="sig-meter">${p.invoke} / ${INVOKE_GOAL} invoked</div>
-      <div class="sig-meter" style="font-size:10px">${arch.abstract.atk}/${arch.abstract.hp} when summoned</div>`;
+    ring.style.strokeDashoffset = circ*(1-Math.max(0,p.hp)/START_HP);
+    inner.innerHTML=`<div class="sig-name">${ARCH[p.arch].abstract.name}</div>
+      <div class="sig-stats"><span class="uhp">${p.hp}</span><span class="sig-max">/ ${START_HP}</span></div>
+      <div class="sig-meter">${p.invoke} / ${p.summonCost} to ${p.summonCount>0?'re-':''}summon</div>`;
   }
+  const tip=c.querySelector('.hover-tip');
+  if(tip) tip.innerHTML=centreTipHtml(p);
 }
-
 function renderHand(){
   const p=you(), el=document.getElementById('hand');
   el.innerHTML=p.hand.map((cid,i)=>{
@@ -132,26 +146,28 @@ function renderHand(){
     </div>`;
   }).join('');
 }
-
 function renderCmd(){
   const p=you();
   const myTurn = G.turn===0 && !G.over;
   document.getElementById('turn-ind').textContent = G.over?'GAME OVER': myTurn?`TURN ${G.turnNo} — YOURS`:`TURN ${G.turnNo} — ADVERSARY`;
-
   const endBtn=document.getElementById('btn-end');
   endBtn.disabled = !myTurn;
-  /* nudge: glow End Turn when nothing useful remains */
   const anythingLeft = myTurn && (
     p.hand.some(cid=>CARDS[cid].cost<=p.mana && (CARDS[cid].t==='s' || p.board.some(s=>!s))) ||
-    unitRefs(p,true).some(r=>getUnit(r).ready) ||
-    (!p.summoned && p.invoke>=INVOKE_GOAL)
+    unitRefs(p).some(r=>getUnit(r).ready) ||
+    (!p.abstractUnit && p.invoke>=p.summonCost) ||
+    canUseAbility(p)
   );
   endBtn.classList.toggle('attention', myTurn && !anythingLeft);
-
   const bs=document.getElementById('btn-summon');
-  bs.style.display = (myTurn && !p.summoned && p.invoke>=INVOKE_GOAL)?'inline-block':'none';
-
-  /* hint line */
+  const canSummon = myTurn && !p.abstractUnit && p.invoke>=p.summonCost;
+  bs.style.display = canSummon?'inline-block':'none';
+  if(canSummon) bs.textContent=`${p.summonCount>0?'Resummon':'Summon'} (${p.summonCost})`;
+  const ba=document.getElementById('btn-ability');
+  const ab=ARCH[p.arch].abstract.ability;
+  ba.style.display = (myTurn && canUseAbility(p))?'inline-block':'none';
+  ba.textContent=`${ab.name} (${ab.cost})`;
+  ba.title=ab.txt+' Once per turn.';
   const hint=document.getElementById('action-hint');
   hint.classList.remove('flash');
   if(ui.flash && Date.now()<ui.flash.until){
@@ -160,53 +176,44 @@ function renderCmd(){
   else if(!myTurn){ hint.textContent = G.over?'':'The Adversary considers…'; }
   else if(ui.targeting){ hint.textContent = ui.targeting.hint; }
   else { hint.textContent='Drag a follower onto a node, click a spell, or click a glowing follower to act.'; }
-
-  /* unit action buttons: Invoke (when meaningful) + Cancel while a unit is selected */
   const showActions = myTurn && ui.selUnit;
   document.getElementById('unit-actions').classList.toggle('hidden', !showActions);
   if(showActions){
     const u=getUnit(ui.selUnit);
     const bi=document.getElementById('btn-invoke');
-    const canInvoke = u && !u.isAbstract && u.invoke>0 && !p.summoned;
+    const canInvoke = u && u.invoke>0;
     bi.style.display = canInvoke?'inline-block':'none';
     if(canInvoke) bi.textContent=`Invoke +${u.invoke}`;
   }
 }
-
 function applyHighlights(){
-  /* clear */
   document.querySelectorAll('.node.playable,.unit.targetable,.unit.friend-target,.unit.selected,.hero-strip.targetable,.centre.targetable,.centre.selected')
     .forEach(e=>e.classList.remove('playable','targetable','friend-target','selected'));
   const myTurn=G.turn===0 && !G.over;
   if(!myTurn) return;
-  /* targeting */
   if(ui.targeting){
     const t=ui.targeting;
     if(t.mode==='enemyUnit'||t.mode==='attack'){
       document.querySelectorAll('#board-foe .unit').forEach(e=>e.classList.add('targetable'));
-      const cFoe=document.querySelector('#board-foe .centre');
-      if(enemy().abstractUnit) cFoe.classList.add('targetable');
-      if(t.mode==='attack') document.getElementById('strip-foe').classList.add('targetable');
+    }
+    if(t.mode==='attack'){
+      /* the form shields the core: the centre is always the face target */
+      document.querySelector('#board-foe .centre').classList.add('targetable');
     }
     if(t.mode==='friendUnit'){
       document.querySelectorAll('#board-you .unit').forEach(e=>e.classList.add('friend-target'));
     }
   }
-  /* selected unit */
   if(ui.selUnit){
-    if(ui.selUnit.zone==='abstract') document.querySelector('#board-you .centre').classList.add('selected');
-    else { const el=document.querySelector(`#board-you .unit[data-idx="${ui.selUnit.idx}"]`); if(el) el.classList.add('selected'); }
+    const el=document.querySelector(`#board-you .unit[data-idx="${ui.selUnit.idx}"]`);
+    if(el) el.classList.add('selected');
   }
 }
-
-/* transient hint message in the command bar */
 function flashHint(msg, ms=1800){
   ui.flash={msg, until:Date.now()+ms};
   renderCmd();
   setTimeout(()=>{ if(ui.flash && Date.now()>=ui.flash.until){ ui.flash=null; if(G&&!G.over) renderCmd(); } }, ms+50);
 }
-
-/* floating combat number over an element */
 function floatNum(host,n,small=false,color=null){
   if(!host) return;
   const r=host.getBoundingClientRect();
@@ -217,7 +224,6 @@ function floatNum(host,n,small=false,color=null){
   f.textContent=(n>0?'+':'')+n;
   document.body.appendChild(f); setTimeout(()=>f.remove(),1000);
 }
-
 function log(msg,cls){
   const el=document.getElementById('log');
   const d=document.createElement('div'); d.className='l-'+(cls||'sys'); d.textContent=msg;

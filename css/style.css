@@ -155,3 +155,21 @@ button{font-family:var(--body);cursor:pointer}
 .floater{position:fixed;font-family:var(--display);font-weight:900;font-size:22px;pointer-events:none;z-index:60;animation:floatup 1s ease forwards}
 .floater.small{font-size:17px}
 @keyframes floatup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-44px)}}
+
+/* ---------- form / ability additions ---------- */
+#btn-ability{display:none;border-color:var(--accent);color:var(--accent)}
+#btn-ability:hover{box-shadow:0 0 14px -6px var(--accent)}
+.centre .sig-max{color:var(--muted);font-size:12px;font-weight:400}
+.centre .sig-stats .uhp{font-size:20px}
+
+/* ---------- hover tooltips (units & centres) ---------- */
+.hover-tip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);width:200px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:11px;line-height:1.5;color:var(--muted);text-align:left;opacity:0;pointer-events:none;transition:opacity .15s;z-index:9;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.hover-tip b{color:var(--text);font-weight:600}
+.hover-tip .tip-dim{opacity:.7;font-style:italic}
+.hover-tip div{margin-bottom:3px}
+.hover-tip div:last-child{margin-bottom:0}
+.unit:hover>.hover-tip,.centre:hover>.hover-tip{opacity:1}
+.centre .hover-tip{width:240px}
+/* foe board sits near the top edge — flip its tooltips downward */
+#board-foe .hover-tip{bottom:auto;top:calc(100% + 8px)}
+#board-foe .node-tip{bottom:auto;top:calc(50% + 16px)}

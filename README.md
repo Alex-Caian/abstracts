@@ -4,7 +4,7 @@
 
 **[▶ Play it now](https://alex-caian.github.io/abstracts/)** — single-player vs. the Adversary, in your browser. Nothing to install.
 
-<img src="screenshots/abstracts1.png"/>
+<img src="screenshots/abstracts1.png"/ height=600px width=400px>
 
 ---
 
@@ -123,4 +123,4 @@ The project follows a staging → release flow: changes are developed and playte
 
 ## Credits
 
-Designed by Alex Caian. Built in collaboration with Claude (Anthropic).
+Designed by Alex, built with Claude Fable 5.

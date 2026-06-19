@@ -23,7 +23,7 @@ function buildBoards(){
       const q=pts[(i+1)%pts.length];
       svg+=`<line class="edge" data-e="${i}" x1="${pt.x}" y1="${pt.y}" x2="${q.x}" y2="${q.y}"></line>`;
     });
-    pts.forEach(pt=>{ svg+=`<line class="spoke" x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
+    pts.forEach((pt,i)=>{ svg+=`<line class="spoke" data-s="${i}" x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
     svg+='</svg>';
     let html=svg+`<div class="board-label">${p.name} · ${arch.geoName}</div>`;
     p.angles.forEach((ang,i)=>{
@@ -78,7 +78,7 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.invoke>0){
     lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
     if(!linkedAt(owner,nodeIdx)) lines.push(`<b>Isolated</b> — needs a linked neighbour to invoke.`);
-  } else if(c){
+  } else if(c && !/cannot invoke/i.test(c.txt||'')){
     lines.push(`<span class="tip-dim">Cannot invoke.</span>`);
   }
   if(u.terrified) lines.push(`<b>Terrified</b> — cannot act this turn.`);
@@ -132,6 +132,10 @@ function renderBoard(side,p){
     const i=+edge.dataset.e;
     edge.classList.toggle('lit', !!(p.board[i] && p.board[(i+1)%nN]));
   });
+  /* spokes to the core: lit (subtly) wherever a follower stands on that node */
+  board.querySelectorAll('svg .spoke').forEach(sp=>{
+    sp.classList.toggle('lit', !!p.board[+sp.dataset.s]);
+  });
   board.classList.toggle('communion', diagramComplete(p));
   /* centre: the HP lives here now, manifested or exposed */
   const c=board.querySelector('.centre');
@@ -151,6 +155,8 @@ function renderBoard(side,p){
       <div class="sig-stats"><span class="uhp">${p.hp}</span><span class="sig-max">/ ${START_HP}</span></div>
       <div class="sig-meter">${p.invoke} / ${p.summonCost} to ${p.summonCount>0?'re-':''}summon</div>`;
   }
+  /* the core stirs when enough essence has gathered to take form */
+  c.classList.toggle('summon-ready', !p.abstractUnit && p.invoke>=p.summonCost && !G.over);
   const tip=c.querySelector('.hover-tip');
   if(tip) tip.innerHTML=centreTipHtml(p);
 }

@@ -122,6 +122,7 @@ The project follows a staging → release flow: changes are developed and playte
 
 | Version | Highlights |
 |---|---|
+| v0.2.3 | Polish pass: spokes now light from each occupied node to the core (quieter than links), the core luminates when a summon is affordable and arrives with an ignite-and-shockwave flourish, Tribunal heals the manifested form, lore wording tightened (core, never "hero"), unused cards retired ahead of deck-building, and dead CSS/tooltip duplication cleaned up |
 | v0.2.2 | The ritual update: link-gated invoking, communion, per-Abstract summon costs, Knowledge's distillable octagon (Twin Prophets, Veil of Theory, Distillation, Refutation), aggro Fear (cheap recurring form, Mass Hysteria, Giant Spiders), the litany (decks recycle, overdraw forgets), turn-25 decay clock, Terrified status, AI-vs-AI balance simulator |
 | v0.2.1 | Mobile support: drag-and-drop rebuilt on Pointer Events (touch and mouse), ghost-card drag preview, ghost-click suppression |
 | v0.2.0 | Invoke economy rework: the Abstract *is* the player — 30 HP core, pure-HP shield forms, resummoning at escalating cost, arrival powers, once-per-turn abilities, hover tooltips |

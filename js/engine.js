@@ -187,7 +187,7 @@ function resolveFx(fx,p,ref,self){
     case 'atkDownAll': eachUnits(e,u=>{u.atk=Math.max(0,u.atk-1);}); log('All enemy followers lose 1 Attack.','sys'); break;
     case 'atkUpAll': eachUnits(p,u=>{u.atk+=1;}); log('Hysteria spreads — your followers gain +1 Attack.','sys'); break;
     case 'aoe2': unitRefs(e).reverse().forEach(r=>damageUnit(r,2)); break;
-    case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healCore(p,3); break;
+    case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healFace(p,3); break;
     case 'bless': { const u=getUnit(ref); u.atk+=2;u.hp+=2;u.maxHp+=2; break; }
     case 'sacrifice': { const u=getUnit(ref); const gain=u.invoke+2; killUnit(ref); gainInvoke(p,gain); log(`The rite yields ${gain} essence.`,'sys'); break; }
     case 'veil': eachUnits(p,u=>{u.hp+=2;u.maxHp+=2;}); log('A veil of theory settles — your followers gain +0/+2.','sys'); break;
@@ -286,7 +286,8 @@ function summonAbstract(p){
     drawCards(p,1);
     log('Awakening: your followers gain +1 invoke value.','sys');
   }
-  const cEl=document.querySelector(`#board-${p.isAI?'foe':'you'} .centre`); if(cEl) cEl.classList.add('summoned');
+  const cEl=document.querySelector(`#board-${p.isAI?'foe':'you'} .centre`);
+  if(cEl){ cEl.classList.remove('summoned'); void cEl.offsetWidth; cEl.classList.add('summoned'); }
   renderAll();
 }
 

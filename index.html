@@ -21,6 +21,7 @@
 <!-- ================= GAME ================= -->
 <div id="screen-game" class="hidden">
   <div id="battlefield">
+    <div id="foe-hand"></div>
     <div class="hero-strip" id="strip-foe"></div>
     <div class="board-wrap"><div class="board" id="board-foe"></div></div>
     <div id="cmdbar">
@@ -82,7 +83,7 @@
   <p>While your form is in play it <b>shields your core completely</b> — all damage strikes the form until it is unmade. The form cannot attack or invoke; it protects, triggers its <b>arrival</b> power, exerts its <b>aura</b> (all auras trigger at the start of your turn), and offers its <b>ability</b>.</p>
   <ul>
     <li><b>FEAR</b> (6 HP, summons at 8) — cheap to conjure, quick to fall, always returning. Arrival: empty nodes fill with 1/1 Terror Spiders. Aura: 3 damage and a random enemy follower is Terrified (cannot act next turn). Brood (3): summon a 2/2 Giant Spider that deals 1 damage on death.</li>
-    <li><b>JUSTICE</b> (10 HP) — arrival: Day of Judgement, each enemy follower takes damage equal to its own Attack. Aura: if outnumbered, 2 damage to a random enemy follower; otherwise restore 1 HP. Verdict (6): destroy the strongest enemy follower.</li>
+    <li><b>JUSTICE</b> (10 HP) — arrival: Day of Judgement, each enemy follower takes damage equal to its own Attack. Aura: if outnumbered, 2 damage to a random enemy follower; if outnumbering, restore 2 HP; at equal numbers, both. Verdict (6): destroy the strongest enemy follower.</li>
     <li><b>KNOWLEDGE</b> (10 HP, summons at 12) — arrival: Awakening, your followers gain +1 invoke value, draw a card. Aura: draw a card and gain 1 mana. Insight (4): draw 2 cards; in communion, also gain 1 essence and deal 1 damage. Knowledge alone can <b>distil</b> its diagram: spells dissolve empty nodes forever, the circle tightens, and communion comes closer.</li>
   </ul>
   <p>Press <b>Esc</b>, click <b>Cancel</b>, or click empty ground to deselect. Every turn is the same dilemma: press the attack, hold the line, or feed the circle.</p>

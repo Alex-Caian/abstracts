@@ -48,9 +48,8 @@ button{font-family:var(--body);cursor:pointer}
 .board{position:relative;height:268px;max-width:560px;margin:0 auto}
 .board svg.geo-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .board svg.geo-lines line,.board svg.geo-lines polygon{stroke:var(--accent);stroke-opacity:.28;fill:none;stroke-width:1.2}
-.board-label{position:absolute;top:8px;left:12px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 
-.node{position:absolute;width:92px;height:84px;transform:translate(-50%,-50%);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.node{position:absolute;width:80px;height:74px;transform:translate(-50%,-50%);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 /* empty node = a quiet dot; hover reveals its bonus */
 .node .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);opacity:.55;box-shadow:0 0 8px -2px var(--accent);transition:transform .15s,opacity .15s}
 .node.empty:hover .dot{opacity:1;transform:scale(1.35)}
@@ -65,7 +64,7 @@ button{font-family:var(--body);cursor:pointer}
 @keyframes dotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
 
 .unit{width:100%;height:100%;border-radius:8px;background:var(--surface2);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;cursor:default;position:relative}
-.unit .uname{font-size:10.5px;line-height:1.15;font-weight:600;letter-spacing:.02em}
+.unit .uname{font-size:10px;line-height:1.12;font-weight:600;letter-spacing:.01em}
 .unit .ustats{display:flex;justify-content:space-between;align-items:flex-end}
 .unit .uatk{color:#FFC56E;font-family:var(--display);font-weight:700;font-size:16px}
 .unit .uhp{color:var(--hp);font-family:var(--display);font-weight:700;font-size:16px}
@@ -80,30 +79,35 @@ button{font-family:var(--body);cursor:pointer}
 @keyframes target-throb{0%,100%{outline-color:var(--hp)}50%{outline-color:rgba(255,94,108,.45)}}
 
 /* centre / abstract slot */
-.centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:118px;height:118px;display:flex;align-items:center;justify-content:center}
-.sigil-ring{position:absolute;inset:0}
-.sigil-ring circle.track{fill:rgba(14,11,24,.7);stroke:var(--line);stroke-width:2}
-.sigil-ring circle.fill{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .4s;filter:drop-shadow(0 0 5px var(--accent))}
-.centre .sig-inner{position:relative;text-align:center;width:96px}
-.centre .sig-name{font-family:var(--display);font-weight:900;letter-spacing:.16em;font-size:13px;color:var(--accent)}
-.centre .sig-meter{font-size:11px;color:var(--muted);margin-top:2px}
-.centre .sig-stats{display:flex;justify-content:center;gap:10px;font-family:var(--display);font-weight:700;font-size:17px;margin-top:2px}
+/* the concept's emblem IS the centre — no ring; HP on top, summon cost below */
+.centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:64px}
+.centre .sig-hp{font-family:var(--display);font-weight:700;font-size:19px;line-height:1;color:var(--text)}
+.centre .sig-icon{position:relative;width:56px;height:56px;line-height:0;color:var(--accent);filter:drop-shadow(0 0 5px var(--accent))}
+.centre .sig-icon .ic{display:block;width:100%;height:100%}
+.centre .sig-icon .ic svg{width:100%;height:100%;display:block;transition:filter .35s}
+.centre .sig-icon .ic-on{display:none}
+/* manifested: show the awakened emblem — full hue, stronger glow, slow breathing, never fades */
+.centre.manifested .sig-icon{filter:drop-shadow(0 0 11px var(--accent))}
+.centre.manifested .sig-icon .ic-pre{display:none}
+.centre.manifested .sig-icon .ic-on{display:block;animation:emblem-breathe 2.6s ease-in-out infinite}
+@keyframes emblem-breathe{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.07);filter:brightness(1.32)}}
+.centre .sig-sub{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:4px;line-height:1;font-weight:600}
+.centre .sig-sub .chain{width:15px;height:15px;color:var(--accent);flex:none}
 .centre.summoned{animation:ignite 1s ease}
-.centre.summoned .sigil-ring circle.fill{stroke-width:4}
 /* a shockwave ring blooms outward the instant the form takes shape */
-.centre.summoned::after{content:'';position:absolute;left:50%;top:50%;width:118px;height:118px;border-radius:50%;border:2px solid var(--accent);opacity:0;transform:translate(-50%,-50%) scale(.5);animation:summon-burst .85s ease-out;pointer-events:none}
+.centre.summoned::after{content:'';position:absolute;left:50%;top:50%;width:80px;height:80px;border-radius:50%;border:2px solid var(--accent);opacity:0;transform:translate(-50%,-50%) scale(.5);animation:summon-burst .85s ease-out;pointer-events:none}
 @keyframes summon-burst{0%{opacity:.85;transform:translate(-50%,-50%) scale(.5)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.6)}}
-/* before summoning: the gathered essence makes the core breathe and glow */
+/* before summoning: the gathered essence makes the emblem breathe and glow */
 #board-you .centre.summon-ready{animation:summon-luminate 1.4s ease-in-out infinite}
-#board-you .centre.summon-ready .sigil-ring circle.fill{filter:drop-shadow(0 0 9px var(--accent))}
+#board-you .centre.summon-ready .sig-icon{filter:drop-shadow(0 0 10px var(--accent))}
 @keyframes summon-luminate{
   0%,100%{filter:drop-shadow(0 0 4px var(--accent));transform:translate(-50%,-50%) scale(1) rotate(0deg)}
   25%{transform:translate(-50%,-50%) scale(1.035) rotate(-.6deg)}
   50%{filter:drop-shadow(0 0 17px var(--accent));transform:translate(-50%,-50%) scale(1.05) rotate(0deg)}
   75%{transform:translate(-50%,-50%) scale(1.035) rotate(.6deg)}
 }
-.centre.targetable{outline:2px solid var(--hp);outline-offset:3px;border-radius:50%;cursor:crosshair;animation:target-throb 1.1s infinite}
-.centre.selected{outline:2px solid var(--text);outline-offset:3px;border-radius:50%}
+.centre.targetable{outline:2px solid var(--hp);outline-offset:4px;border-radius:8px;cursor:crosshair;animation:target-throb 1.1s infinite}
+.centre.selected{outline:2px solid var(--text);outline-offset:4px;border-radius:8px}
 @keyframes ignite{
   0%{filter:brightness(3.4) blur(3px);transform:translate(-50%,-50%) scale(1.2)}
   45%{filter:brightness(1.6) blur(0);transform:translate(-50%,-50%) scale(.96)}
@@ -128,8 +132,23 @@ button{font-family:var(--body);cursor:pointer}
 .btn.invoke-btn{border-color:var(--invoke);color:var(--invoke)}
 .btn.invoke-btn:hover{box-shadow:0 0 14px -6px var(--invoke)}
 
+/* ---------- opponent's concealed hand (face-down backs) ---------- */
+#foe-hand{display:flex;justify-content:center;align-items:flex-start;min-height:46px;padding:2px 0}
+.card-back{width:30px;height:42px;border-radius:5px;background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--line);box-shadow:0 2px 6px rgba(0,0,0,.45);position:relative;margin-left:-9px;transition:margin-left .15s}
+.card-back:first-child{margin-left:0}
+.card-back::after{content:'';position:absolute;inset:4px;border:1px solid var(--accent);border-radius:3px;opacity:.4}
+#foe-hand:hover .card-back{margin-left:-4px}
+
 /* ---------- hand ---------- */
 #hand{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:6px 2px 2px;min-height:172px}
+/* a cast spell crumbles to dust — the cue that it was spent */
+.card.cast-dissolve{pointer-events:none;z-index:70;box-shadow:0 0 18px -4px var(--accent)}
+.card.cast-dissolve{animation:cast-dissolve .72s ease-out forwards}
+@keyframes cast-dissolve{
+  0%{opacity:.96;transform:translateY(0) scale(1) rotate(0deg);filter:blur(0) brightness(1)}
+  40%{opacity:.85;transform:translateY(-8px) scale(1.03) rotate(-1deg);filter:blur(.5px) brightness(1.4)}
+  100%{opacity:0;transform:translateY(-30px) scale(.86) rotate(2deg);filter:blur(5px) brightness(1.7)}
+}
 .card{width:122px;height:164px;background:linear-gradient(170deg,var(--surface2),var(--surface));border:1px solid var(--line);border-radius:9px;padding:8px 9px;display:flex;flex-direction:column;position:relative;transition:transform .14s,border-color .14s,box-shadow .14s;user-select:none}
 .card .cost{position:absolute;top:-9px;left:-9px;width:26px;height:26px;border-radius:50%;background:var(--mana);color:#0B1230;font-family:var(--display);font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(92,141,255,.55)}
 .card .cname{font-weight:600;font-size:12.5px;line-height:1.2;margin-top:4px}
@@ -160,7 +179,7 @@ button{font-family:var(--body);cursor:pointer}
 .overlay .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:38px 44px;text-align:center;max-width:480px}
 .overlay h2{font-family:var(--display);font-weight:900;letter-spacing:.2em;font-size:30px;margin-bottom:10px}
 .overlay p{color:var(--muted);margin-bottom:22px;line-height:1.55}
-.overlay.win h2{color:var(--justice)} .overlay.lose h2{color:var(--hp)}
+.overlay.win h2{color:var(--accent)} .overlay.lose h2{color:var(--hp)}
 #help-box{max-width:600px;text-align:left;max-height:82vh;overflow-y:auto}
 #help-box h2{font-size:20px;text-align:center}
 #help-box h4{font-family:var(--display);letter-spacing:.12em;font-size:13px;margin:14px 0 4px;color:var(--invoke)}
@@ -173,8 +192,7 @@ button{font-family:var(--body);cursor:pointer}
 /* ---------- form / ability additions ---------- */
 #btn-ability{display:none;border-color:var(--accent);color:var(--accent)}
 #btn-ability:hover{box-shadow:0 0 14px -6px var(--accent)}
-.centre .sig-max{color:var(--muted);font-size:12px;font-weight:400}
-.centre .sig-stats .uhp{font-size:20px}
+.centre .sig-max{color:var(--muted);font-size:13px;font-weight:400;margin-left:2px}
 
 /* ---------- hover tooltips (units & centres) ---------- */
 .hover-tip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);width:200px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:11px;line-height:1.5;color:var(--muted);text-align:left;opacity:0;pointer-events:none;transition:opacity .15s;z-index:9;box-shadow:0 6px 18px rgba(0,0,0,.5)}
@@ -204,6 +222,3 @@ button{font-family:var(--body);cursor:pointer}
 .unit .uinv.dim{opacity:.35;box-shadow:none}
 .unit .uterr{position:absolute;top:-8px;left:-6px;background:var(--surface);border:1px solid var(--hp);color:var(--hp);font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px}
 .unit.terrified{opacity:.7}
-
-/* long abstract names (KNOWLEDGE) stay inside the sigil ring */
-.centre .sig-name.long{font-size:10.5px;letter-spacing:.07em}

@@ -40,7 +40,7 @@ document.addEventListener('click',ev=>{
     ui.selUnit=null; ui.targeting=null;
     if(ui.selCard===i){ ui.selCard=null; renderAll(); return; }
     ui.selCard=i;
-    if(!c.target){ const idx=ui.selCard; ui.selCard=null; castSpell(p,idx,null); return; }
+    if(!c.target){ const idx=ui.selCard; ui.selCard=null; dissolveCard(idx); castSpell(p,idx,null); return; }
     if(c.target==='enemyUnit' && unitRefs(enemy()).length===0){ flashHint('No enemy follower to target.'); ui.selCard=null; renderAll(); return; }
     if(c.target==='friendUnit' && unitRefs(p).length===0){ flashHint('You have no follower to target.'); ui.selCard=null; renderAll(); return; }
     if(c.target==='emptyNode'){
@@ -49,7 +49,7 @@ document.addEventListener('click',ev=>{
     }
     ui.targeting={mode:c.target,
       hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':'Choose one of your followers.'),
-      onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); castSpell(p,idx,ref); }};
+      onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,ref); }};
     renderAll(); return;
   }
   if(ui.targeting){

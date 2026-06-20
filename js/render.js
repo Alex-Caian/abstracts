@@ -25,17 +25,15 @@ function buildBoards(){
     });
     pts.forEach((pt,i)=>{ svg+=`<line class="spoke" data-s="${i}" x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
     svg+='</svg>';
-    let html=svg+`<div class="board-label">${p.name} · ${arch.geoName}</div>`;
+    let html=svg;
     p.angles.forEach((ang,i)=>{
       const pt=nodePos(ang);
       html+=`<div class="node" data-side="${side}" data-idx="${i}" style="left:${pt.x}%;top:${pt.y}%"></div>`;
     });
     html+=`<div class="centre" data-side="${side}">
-      <svg class="sigil-ring" viewBox="0 0 118 118">
-        <circle class="track" cx="59" cy="59" r="55"></circle>
-        <circle class="fill" cx="59" cy="59" r="55" stroke-dasharray="345.6" stroke-dashoffset="345.6"></circle>
-      </svg>
-      <div class="sig-inner"></div>
+      <div class="sig-hp"></div>
+      <div class="sig-icon"><span class="ic ic-pre">${arch.icon}</span><span class="ic ic-on">${arch.iconSummoned}</span></div>
+      <div class="sig-sub"></div>
       <div class="hover-tip centre-tip"></div>
     </div>`;
     el.innerHTML=html;
@@ -54,8 +52,15 @@ function renderAll(){
   if(!G) return;
   renderStrip('you',you()); renderStrip('foe',enemy());
   renderBoard('you',you()); renderBoard('foe',enemy());
-  renderHand(); renderCmd();
+  renderHand(); renderFoeHand(); renderCmd();
   applyHighlights();
+}
+/* the opponent's concealed hand — face-down backs, one per held card */
+function renderFoeHand(){
+  const el=document.getElementById('foe-hand'); if(!el) return;
+  const e=enemy();
+  el.className='foe-hand '+ARCH[e.arch].css;
+  el.innerHTML=Array.from({length:e.hand.length},()=>`<div class="card-back"></div>`).join('');
 }
 /* HP now lives at the centre — the strip carries resources only */
 function renderStrip(side,p){
@@ -78,8 +83,6 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.invoke>0){
     lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
     if(!linkedAt(owner,nodeIdx)) lines.push(`<b>Isolated</b> — needs a linked neighbour to invoke.`);
-  } else if(c && !/cannot invoke/i.test(c.txt||'')){
-    lines.push(`<span class="tip-dim">Cannot invoke.</span>`);
   }
   if(u.terrified) lines.push(`<b>Terrified</b> — cannot act this turn.`);
   if(u.sick) lines.push(`Resting — can act next turn.`);
@@ -137,24 +140,23 @@ function renderBoard(side,p){
     sp.classList.toggle('lit', !!p.board[+sp.dataset.s]);
   });
   board.classList.toggle('communion', diagramComplete(p));
-  /* centre: the HP lives here now, manifested or exposed */
+  /* centre: the emblem IS the heart now — HP on top, summon cost (chain) below, no ring */
   const c=board.querySelector('.centre');
-  const inner=c.querySelector('.sig-inner');
-  const ring=c.querySelector('circle.fill');
-  const circ=345.6;
+  const hpEl=c.querySelector('.sig-hp');
+  const subEl=c.querySelector('.sig-sub');
+  /* manifested = the awakened emblem (open book / scales / spider); latent otherwise */
+  c.classList.toggle('manifested', !!p.abstractUnit);
   if(p.abstractUnit){
     const u=p.abstractUnit;
-    ring.style.strokeDashoffset = circ*(1-Math.max(0,u.hp)/u.maxHp);
-    inner.innerHTML=`<div class="sig-name ${u.name.length>=8?'long':''}">${u.name}</div>
-      <div class="sig-stats"><span class="uhp">${u.hp}</span><span class="sig-max">/ ${u.maxHp}</span></div>
-      <div class="sig-meter">shielding core · ${p.hp}</div>`;
+    hpEl.innerHTML=`${u.hp}<span class="sig-max">/ ${u.maxHp}</span>`;
+    subEl.innerHTML=`shielding core · ${p.hp}`;
   } else {
-    ring.style.strokeDashoffset = circ*(1-Math.max(0,p.hp)/START_HP);
-    const nm=ARCH[p.arch].abstract.name;
-    inner.innerHTML=`<div class="sig-name ${nm.length>=8?'long':''}">${nm}</div>
-      <div class="sig-stats"><span class="uhp">${p.hp}</span><span class="sig-max">/ ${START_HP}</span></div>
-      <div class="sig-meter">${p.invoke} / ${p.summonCost} to ${p.summonCount>0?'re-':''}summon</div>`;
+    hpEl.innerHTML=`${p.hp}<span class="sig-max">/ ${START_HP}</span>`;
+    subEl.innerHTML=`<svg class="chain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M11 7l1-1a3.4 3.4 0 0 1 4.8 4.8l-1 1"/><path d="M13 17l-1 1a3.4 3.4 0 0 1-4.8-4.8l1-1"/></svg> ${p.summonCost}`;
   }
+  /* the LATENT emblem fades toward black as the core bleeds; the manifested emblem never fades */
+  const preSvg=c.querySelector('.ic-pre svg');
+  if(preSvg) preSvg.style.filter=`brightness(${Math.pow(Math.max(0,p.hp)/START_HP,0.7).toFixed(2)})`;
   /* the core stirs when enough essence has gathered to take form */
   c.classList.toggle('summon-ready', !p.abstractUnit && p.invoke>=p.summonCost && !G.over);
   const tip=c.querySelector('.hover-tip');
@@ -260,4 +262,15 @@ function log(msg,cls){
   const el=document.getElementById('log');
   const d=document.createElement('div'); d.className='l-'+(cls||'sys'); d.textContent=msg;
   el.appendChild(d); el.scrollTop=el.scrollHeight;
+}
+function dissolveCard(idx){
+  const el=document.querySelector(`.card[data-hand="${idx}"]`);
+  if(!el) return;
+  const r=el.getBoundingClientRect();
+  const g=el.cloneNode(true);
+  g.classList.add('cast-dissolve'); g.classList.remove('selected');
+  g.style.position='fixed'; g.style.left=r.left+'px'; g.style.top=r.top+'px';
+  g.style.width=r.width+'px'; g.style.height=r.height+'px'; g.style.margin='0';
+  document.body.appendChild(g);
+  setTimeout(()=>g.remove(),760);
 }

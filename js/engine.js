@@ -113,14 +113,17 @@ function startTurn(){
       }
     }
     if(a==='justice'){
-      if(unitRefs(e).length > unitRefs(p).length){
+      const ec=unitRefs(e).length, pc=unitRefs(p).length;
+      /* outnumbered: strike. outnumbering: mend. evenly matched: both. */
+      if(ec>=pc && ec>0){
         const refs=unitRefs(e);
         const r=refs[Math.floor(Math.random()*refs.length)];
         log(`The scales tip — 2 damage to ${getUnit(r).name}.`,'sys');
         damageUnit(r,2);
-      } else {
-        log('The scales rest — JUSTICE restores 1 HP.','sys');
-        healFace(p,1);
+      }
+      if(ec<=pc && !G.over){
+        log('The scales mend — JUSTICE restores 2 HP.','sys');
+        healFace(p,2);
       }
     }
     if(a==='knowledge'){
@@ -187,16 +190,17 @@ function resolveFx(fx,p,ref,self){
     case 'atkDownAll': eachUnits(e,u=>{u.atk=Math.max(0,u.atk-1);}); log('All enemy followers lose 1 Attack.','sys'); break;
     case 'atkUpAll': eachUnits(p,u=>{u.atk+=1;}); log('Hysteria spreads — your followers gain +1 Attack.','sys'); break;
     case 'aoe2': unitRefs(e).reverse().forEach(r=>damageUnit(r,2)); break;
-    case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healFace(p,3); break;
+    case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healFace(p,2); break;
     case 'bless': { const u=getUnit(ref); u.atk+=2;u.hp+=2;u.maxHp+=2; break; }
     case 'sacrifice': { const u=getUnit(ref); const gain=u.invoke+2; killUnit(ref); gainInvoke(p,gain); log(`The rite yields ${gain} essence.`,'sys'); break; }
     case 'veil': eachUnits(p,u=>{u.hp+=2;u.maxHp+=2;}); log('A veil of theory settles — your followers gain +0/+2.','sys'); break;
     case 'twinProphets': {
       const n=p.board.length; let spots=null;
       for(let i=0;i<n;i++){ if(!p.board[i] && !p.board[(i+1)%n]){ spots=[i,(i+1)%n]; break; } }
-      if(!spots) spots = p.board.map((s,i)=>s?null:i).filter(i=>i!==null).slice(0,2);
+      /* no adjacent pair free: a single Prophet manifests — the chorus needs a neighbour */
+      if(!spots){ const free=p.board.map((s,i)=>s?null:i).filter(i=>i!==null); spots = free.length?[free[0]]:[]; }
       spots.forEach(i=>{ p.board[i]={cid:'tok_prophet',name:'Prophet',atk:1,hp:1,maxHp:1,invoke:1,dr:null,ready:false,sick:true,terrified:false}; });
-      log(spots.length?`${spots.length===2?'Two Prophets step':'A Prophet steps'} through, already in chorus.`:'No room — the prophecy fizzles.','sys');
+      log(spots.length?(spots.length===2?'Two Prophets step through, already in chorus.':'A lone Prophet steps through.'):'No room — the prophecy fizzles.','sys');
       break; }
     case 'refute': { const u=getUnit(ref); if(u){
       G.players[ref.pi].board[ref.idx]={cid:'tok_footnote',name:'Footnote',atk:1,hp:1,maxHp:1,invoke:0,dr:null,ready:false,sick:false,terrified:false};
@@ -333,6 +337,7 @@ function endGame(winner){
   ov.classList.remove('hidden');
   const won = winner===you();
   ov.classList.add(won?'win':'lose');
+  if(won) ov.classList.add(ARCH[you().arch].css);   /* triumph wears your Abstract's colour */
   document.getElementById('over-title').textContent = won?'TRIUMPH':'UNDONE';
   document.getElementById('over-text').textContent = won
     ? `${ARCH[you().arch].name} prevails. The Adversary's concept dissolves back into the void it came from.`

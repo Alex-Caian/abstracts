@@ -6,8 +6,9 @@
    ===================================================================== */
 async function aiTurn(p){
   const h=foe(p);
+  const maySummon = G.turnNo > (p.summonLockTurns||0);   // scenario summon-lock (e.g. tutorial Fear holds 4 turns)
   await sleep(700); if(G.over) return;
-  if(!p.abstractUnit && p.invoke>=p.summonCost){ summonAbstract(p); await sleep(900); }
+  if(maySummon && !p.abstractUnit && p.invoke>=p.summonCost){ summonAbstract(p); await sleep(900); }
   if(canUseAbility(p) && aiAbilityWorthIt(p,h)){ useAbility(p); await sleep(700); }
   /* play cards greedily, most expensive playable first */
   let safety=20;
@@ -29,7 +30,7 @@ async function aiTurn(p){
     if(G.over) return;
     await sleep(800);
   }
-  if(!G.over && !p.abstractUnit && p.invoke>=p.summonCost){ summonAbstract(p); await sleep(900); }
+  if(maySummon && !G.over && !p.abstractUnit && p.invoke>=p.summonCost){ summonAbstract(p); await sleep(900); }
   /* act with units */
   for(const ref of unitRefs(p)){
     if(G.over) return;
@@ -65,11 +66,15 @@ function aiSpellOk(p,h,c){
   switch(c.fx){
     case 'dmg2': case 'dmg3': case 'surge': case 'chill': return eUnits.length>0;
     case 'atkDownAll': return eUnits.length>=2;
+    case 'massHysteria': return eUnits.length>=2;
+    case 'paralyse': return eUnits.length>0;
+    case 'chessMove': return eUnits.length>0;
     case 'aoe2': return eUnits.length>=2;
     case 'tribunal': return eUnits.length>=2 || p.hp<=20;
     case 'bless': return unitRefs(p).length>0;
     case 'sacrifice': return unitRefs(p).length>=4 && !diagramComplete(p);
     case 'inv2': return true;
+    case 'plea': return true;
     case 'veil': return unitRefs(p).length>=2;
     case 'atkUpAll': return unitRefs(p).length>=3;
     case 'twinProphets': return p.board.some(s=>!s);
@@ -143,9 +148,9 @@ function aiActUnit(p,h,ref,u){
   const kills=eUnits.filter(r=>{const d=getUnit(r);return d.hp<=u.atk;})
                     .sort((a,b)=>getUnit(b).atk-getUnit(a).atk);
   if(kills.length && (getUnit(kills[0]).atk<u.hp || getUnit(kills[0]).atk>=3)){ attackWith(p,ref,kills[0]); return; }
-  /* invoke when linked and building toward a summon (or banking for the ability) */
+  /* invoke when able and building toward a summon (or banking for the ability) */
   const wantsEssence = !p.abstractUnit || p.invoke < ARCH[p.arch].abstract.ability.cost;
-  if(u.invoke>0 && linkedAt(p,ref.idx) && wantsEssence){ invokeWith(p,ref); return; }
+  if(wantsEssence && canChannel(p,u,ref.idx)){ invokeWith(p,ref); return; }
   /* big enemy threatening? trade into it */
   if(eUnits.length && getUnit(eUnits[0]).atk>=4 && u.atk>=3){ attackWith(p,ref,eUnits.sort((a,b)=>getUnit(b).atk-getUnit(a).atk)[0]); return; }
   if(u.atk>0){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }

@@ -17,6 +17,7 @@ function buildBoards(){
     const arch=ARCH[p.arch];
     const el=document.getElementById('board-'+side);
     el.className='board '+arch.css;
+    if(el.parentElement) el.parentElement.className='board-wrap mat '+arch.css;  // playmat backdrop per Abstract
     const pts=p.angles.map(nodePos);
     let svg=`<svg class="geo-lines" viewBox="0 0 100 100" preserveAspectRatio="none">`;
     pts.forEach((pt,i)=>{
@@ -42,9 +43,7 @@ function buildBoards(){
   const a=ARCH[you().arch];
   const ab=a.abstract.ability;
   document.getElementById('nodes-help').innerHTML =
-    `<b>${a.geoName}</b><br>`+
-    you().nodes.map((k,i)=>`<b>Node ${i+1}</b> — ${NODE_FX[k].txt}`).join('<br>')+
-    `<br><br><b>${a.abstract.name}</b> (${a.abstract.hp} HP form)<br>`+
+    `<b>${a.abstract.name}</b> (${a.abstract.hp} HP form)<br>`+
     `${a.abstract.onSummonTxt}<br>${a.abstract.auraTxt}<br>`+
     `<b>${ab.name}</b> (${ab.cost} invoke, once per turn) — ${ab.txt}`;
 }
@@ -80,10 +79,21 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.cid==='tok_gspider') lines.push(`<b>Brood-spawn. On death: deal 1 damage.</b>`);
   if(u.cid==='tok_prophet') lines.push(`<b>Conjured — a voice in the chorus.</b>`);
   if(u.cid==='tok_footnote') lines.push(`<b>All that remains of something greater.</b>`);
-  if(u.invoke>0){
+  const eInv = effInvoke(owner,u,nodeIdx);
+  if(u.soloInv){
+    if(eInv>0) lines.push(`Invokes for <b>${eInv}</b> essence while <b>alone</b>.`);
+    else lines.push(`<b>Linked</b> — the lone hunter channels nothing.`);
+  } else if(u.invoke>0){
     lines.push(`Invokes for <b>${u.invoke}</b> essence.`);
     if(!linkedAt(owner,nodeIdx)) lines.push(`<b>Isolated</b> — needs a linked neighbour to invoke.`);
   }
+  if(u.muted) lines.push(`<b>Muted</b> — cannot invoke this turn.`);
+  if(u.paralysed>0) lines.push(`<b>Terrified</b> — cannot act (${u.paralysed} turn${u.paralysed===1?'':'s'} left). It also takes 1 damage at the start of each of those turns.`);
+  const cdef=CARDS[u.cid];
+  if(cdef && cdef.lockNode && owner.lockNode && owner.lockNode[u.cid]!==undefined && owner.lockNode[u.cid]!==nodeIdx)
+    lines.push(`<b>Unconsecrated seat</b> — invokes only from your first Vindicator's node.`);
+  if(cdef && cdef.invDrawn && (owner.drawnCount||0) < cdef.invDrawn)
+    lines.push(`<b>Unschooled</b> — invokes once you have drawn ${cdef.invDrawn} cards (drawn ${owner.drawnCount||0}).`);
   if(u.terrified) lines.push(`<b>Terrified</b> — cannot act this turn.`);
   if(u.sick) lines.push(`Resting — can act next turn.`);
   lines.push(`<span class="tip-dim">Played on: ${NODE_FX[owner.nodes[nodeIdx]].txt}</span>`);
@@ -110,10 +120,12 @@ function renderBoard(side,p){
     const i=+node.dataset.idx, u=p.board[i];
     node.classList.remove('playable','drag-over','empty');
     if(u){
-      const isolated = !linkedAt(p,i);
-      node.innerHTML=`<div class="unit" data-side="${side}" data-idx="${i}">
-        ${u.invoke>0?`<div class="uinv ${isolated?'dim':''}">${u.invoke}</div>`:''}
-        ${u.terrified?`<div class="uterr">✕</div>`:(u.sick?`<div class="usick">zZ</div>`:'')}
+      const eInv = effInvoke(p,u,i);
+      const canCh = canChannel(p,u,i);
+      const appar = (CARDS[u.cid] && CARDS[u.cid].apparition) ? 'apparition' : '';
+      node.innerHTML=`<div class="unit ${appar}" data-side="${side}" data-idx="${i}">
+        ${eInv>0?`<div class="uinv ${canCh?'':'dim'}">${eInv}</div>`:''}
+        ${u.paralysed>0?`<div class="upar">↯</div>`:(u.terrified?`<div class="uterr">✕</div>`:(u.sick?`<div class="usick">zZ</div>`:''))}
         <div class="uname">${u.name}</div>
         <div class="ustats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
         <div class="hover-tip">${unitTipHtml(u,p,i)}</div>
@@ -164,16 +176,21 @@ function renderBoard(side,p){
 }
 function renderHand(){
   const p=you(), el=document.getElementById('hand');
+  const myTurn = G.turn===0 && !G.over;
   el.innerHTML=p.hand.map((cid,i)=>{
     const c=CARDS[cid];
-    const aff = c.cost<=p.mana && G.turn===0 && !G.over;
+    const hasMana = c.cost<=p.mana;
+    const hasTgt  = (typeof spellTargetable==='function') ? spellTargetable(p,c) : true;
+    const aff = hasMana && hasTgt && myTurn;
     const drag = aff && c.t==='f';
-    return `<div class="card ${ARCH[c.arch].css} ${aff?'affordable':'unaffordable'} ${drag?'can-drag':''} ${ui.selCard===i?'selected':''}" data-hand="${i}" draggable="false">
+    const noTgt = myTurn && hasMana && !hasTgt;   // otherwise castable, blocked only by a lack of targets
+    return `<div class="card ${ARCH[c.arch].css} ${aff?'affordable':'unaffordable'} ${drag?'can-drag':''} ${c.apparition?'apparition':''} ${ui.selCard===i?'selected':''}" data-hand="${i}" draggable="false">
       <div class="cost">${c.cost}</div>
       <div class="cname">${c.name}</div>
       <div class="ctype">${c.t==='f'?'Follower':'Spell'}</div>
       <div class="ctext">${c.txt||''}</div>
       ${c.t==='f'?`<div class="cstats"><span class="uatk">${c.atk}</span><span class="cinv">✦ invoke ${c.inv}</span><span class="uhp">${c.hp}</span></div>`:''}
+      ${noTgt?`<div class="hover-tip card-tip"><b>No valid targets.</b></div>`:''}
     </div>`;
   }).join('');
 }
@@ -210,11 +227,12 @@ function renderCmd(){
   const showActions = myTurn && ui.selUnit;
   document.getElementById('unit-actions').classList.toggle('hidden', !showActions);
   if(showActions){
-    const u=getUnit(ui.selUnit);
+    const ref=ui.selUnit;
+    const u=getUnit(ref);
     const bi=document.getElementById('btn-invoke');
-    const canInvoke = u && u.invoke>0 && linkedAt(p, ui.selUnit.idx);
+    const canInvoke = u && canChannel(p, u, ref.idx);
     bi.style.display = canInvoke?'inline-block':'none';
-    if(canInvoke) bi.textContent=`Invoke +${u.invoke}`;
+    if(canInvoke) bi.textContent=`Invoke +${effInvoke(p,u,ref.idx)}`;
   }
 }
 function applyHighlights(){
@@ -263,6 +281,7 @@ function log(msg,cls){
   const d=document.createElement('div'); d.className='l-'+(cls||'sys'); d.textContent=msg;
   el.appendChild(d); el.scrollTop=el.scrollHeight;
 }
+/* a cast spell crumbles to dust — a clear cue it was spent (esp. for no-target spells) */
 function dissolveCard(idx){
   const el=document.querySelector(`.card[data-hand="${idx}"]`);
   if(!el) return;
@@ -273,4 +292,13 @@ function dissolveCard(idx){
   g.style.width=r.width+'px'; g.style.height=r.height+'px'; g.style.margin='0';
   document.body.appendChild(g);
   setTimeout(()=>g.remove(),760);
+}
+/* coin flip at game start: a spinning disc, then who-goes-first, then onDone (startTurn) */
+function runCoinFlip(first, onDone){
+  const ov=document.createElement('div'); ov.className='coinflip-overlay';
+  ov.innerHTML=`<div class="coin"></div><div class="coin-result" id="coin-result"></div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const r=document.getElementById('coin-result');
+    if(r){ r.textContent = first===0 ? 'You go first.' : 'The Adversary goes first.'; r.classList.add('show'); } }, 1150);
+  setTimeout(()=>{ ov.remove(); if(typeof onDone==='function') onDone(); }, 2250);
 }

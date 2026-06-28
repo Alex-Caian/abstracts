@@ -18,11 +18,15 @@ function selectUnit(ref){
   const u=getUnit(ref);
   const e=enemy();
   const faceTxt = e.abstractUnit ? `${e.abstractUnit.name}'s form (it shields their core)` : "their exposed core";
-  const linked = linkedAt(you(), ref.idx);
+  const idx=ref.idx;
+  let invNote='';
+  if(canChannel(you(), u, idx)) invNote=` Or press Invoke +${effInvoke(you(),u,idx)}.`;
+  else if(u.muted) invNote=' (Muted — it cannot invoke this turn.)';
+  else if(u.soloInv && linkedAt(you(),idx)) invNote=' (The lone hunter channels nothing while linked.)';
+  else if(u.invoke>0) invNote=' (Isolated — it needs a linked neighbour to invoke.)';
   ui.targeting={
     mode:'attack',
-    hint:`Attack: click an enemy follower or ${faceTxt}.`
-      +(u.invoke>0 ? (linked?` Or press Invoke +${u.invoke}.`:` (Isolated — it needs a linked neighbour to invoke.)`) : ''),
+    hint:`Attack: click an enemy follower or ${faceTxt}.`+invNote,
     onPick:(t)=>{ const r=ui.selUnit; clearSelection(); attackWith(you(),r,t); }
   };
   renderAll();
@@ -111,6 +115,12 @@ function dragStartGhost(x,y){
   document.querySelectorAll('#board-you .node').forEach(n=>{
     if(!you().board[+n.dataset.idx]) n.classList.add('playable');
   });
+  /* from the 2nd Vindicator on, mark the consecrated seat it must occupy to invoke */
+  const dragCid=you().hand[dragPtr.idx];
+  if(c.lockNode && you().lockNode[dragCid]!==undefined){
+    const cn=document.querySelector(`#board-you .node[data-idx="${you().lockNode[dragCid]}"]`);
+    if(cn) cn.classList.add('consecrated');
+  }
   document.getElementById('action-hint').textContent=`Drop ${c.name} on a glowing node — each node grants a different bonus.`;
   dragMoveGhost(x,y);
 }
@@ -120,7 +130,7 @@ function dragMoveGhost(x,y){
 function dragCleanup(){
   if(dragPtr.ghost) dragPtr.ghost.remove();
   if(dragPtr.cardEl) dragPtr.cardEl.classList.remove('dragging');
-  document.querySelectorAll('.node.playable,.node.drag-over').forEach(n=>n.classList.remove('playable','drag-over'));
+  document.querySelectorAll('.node.playable,.node.drag-over,.node.consecrated').forEach(n=>n.classList.remove('playable','drag-over','consecrated'));
   ui.dragCard=null;
   dragPtr.idx=null; dragPtr.cardEl=null; dragPtr.ghost=null; dragPtr.started=false; dragPtr.overNode=null;
 }
@@ -177,7 +187,7 @@ document.getElementById('btn-summon').addEventListener('click',()=>{ if(G && G.t
 document.getElementById('btn-ability').addEventListener('click',()=>{ if(G && G.turn===0) useAbility(you()); });
 document.getElementById('btn-help').addEventListener('click',()=>document.getElementById('help-overlay').classList.remove('hidden'));
 document.getElementById('btn-help-close').addEventListener('click',()=>document.getElementById('help-overlay').classList.add('hidden'));
-document.getElementById('btn-restart').addEventListener('click',()=>location.reload());
+document.getElementById('btn-restart').addEventListener('click',()=>{ if(G && !G.over){ if(window.confirm('Exit to the main menu? This concedes the match.')) location.reload(); } else { location.reload(); } });
 document.addEventListener('keydown',ev=>{
   if(!G || G.over) return;
   if(ev.key==='Escape'){

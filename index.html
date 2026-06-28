@@ -6,16 +6,87 @@
 <title>ABSTRACTS — A Summoning Card Game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
+<!-- ================= HOME ================= -->
+<div id="screen-home">
+  <div id="home-corner">
+    <button class="corner-btn dk hidden" id="home-decks" aria-label="Decks">
+      <span class="corner-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="11" height="14.5" rx="1.6"/><rect x="9.5" y="6.5" width="11" height="14.5" rx="1.6"/><path d="M15 11.4l1.7 2.3-1.7 2.3-1.7-2.3z"/></svg></span>
+      <span class="corner-label">Decks</span>
+    </button>
+    <button class="corner-btn cc hidden" id="home-collection" aria-label="Card Collection">
+      <span class="corner-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3.5" width="12" height="17" rx="1.5"/><path d="M9 3.5v17"/><path d="M11.5 8h4M11.5 11h4"/></svg></span>
+      <span class="corner-label">Card<br>Collection</span>
+    </button>
+  </div>
+  <div id="profile" class="hidden">
+    <button id="profile-btn" aria-label="Profile"></button>
+    <div id="profile-menu" class="hidden">
+      <div id="profile-name"></div>
+      <div class="profile-icons" id="profile-icons"></div>
+      <button class="btn" id="profile-editname">Edit name</button>
+      <button class="btn" id="profile-signout">Sign out</button>
+    </div>
+  </div>
+  <h1>ABSTRACTS</h1>
+  <div class="sub">Concepts take form</div>
+  <div class="home-actions">
+    <button class="home-btn" id="home-free">Play</button>
+    <button class="home-btn hidden" id="home-campaign">Campaign</button>
+    <button class="home-btn" id="home-signin">Sign in</button>
+  </div>
+  <div class="note" id="home-note">Play: choose an Abstract and duel a random opponent. Accounts &amp; campaign progress arrive across 0.3.0.</div>
+</div>
+
+<!-- ================= CAMPAIGN ================= -->
+<div id="screen-campaign" class="hidden">
+  <h1>CAMPAIGN</h1>
+  <div class="sub">Wield one Abstract against the others</div>
+  <div id="campaign-list"></div>
+  <button class="btn" id="campaign-back" style="margin-top:6px">Back</button>
+</div>
+
 <!-- ================= DECK SELECT ================= -->
-<div id="screen-select">
+<div id="screen-select" class="hidden">
   <h1>ABSTRACTS</h1>
   <div class="sub">Choose the concept you will give form</div>
   <div class="pick-row" id="pick-row"></div>
   <div class="note">Your opponent will take up one of the remaining Abstracts.</div>
+  <button class="btn" id="select-back" style="margin-top:6px">Back</button>
+</div>
+
+<!-- ================= DECKS (signed-in) ================= -->
+<div id="screen-decks" class="hidden">
+  <h1>DECKS</h1>
+  <div class="sub">Build and manage your decks</div>
+  <div id="decks-body"></div>
+  <button class="btn" id="decks-back" style="margin-top:6px">Back</button>
+</div>
+
+<!-- ================= DECK EDITOR (signed-in) ================= -->
+<div id="screen-deckedit" class="hidden">
+  <h1>DECK EDITOR</h1>
+  <div class="sub">20 cards · max 3 copies · tap a card to add, − to remove</div>
+  <div id="deckedit-body"></div>
+</div>
+
+<!-- ================= COLLECTION (signed-in) ================= -->
+<div id="screen-collection" class="hidden">
+  <h1>COLLECTION</h1>
+  <div class="sub">Every card, by Abstract</div>
+  <div id="collection-list"></div>
+  <button class="btn" id="collection-back" style="margin-top:6px">Back</button>
+</div>
+
+<!-- ================= DECK PICK (signed-in) ================= -->
+<div id="screen-deckpick" class="hidden">
+  <h1 id="deckpick-arch">ABSTRACT</h1>
+  <div class="sub">Choose your deck</div>
+  <div id="deckpick-list"></div>
+  <button class="btn" id="deckpick-back" style="margin-top:6px">Back</button>
 </div>
 
 <!-- ================= GAME ================= -->
@@ -41,10 +112,10 @@
   </div>
   <div id="sidebar">
     <div class="panel"><h3>Chronicle</h3><div id="log"></div></div>
-    <div class="panel"><h3>Your geometry</h3><div id="nodes-help"></div></div>
+    <div class="panel"><h3>Your Form</h3><div id="nodes-help"></div></div>
     <div class="panel" style="text-align:center">
       <button class="btn" id="btn-help">How to play</button>
-      <button class="btn" id="btn-restart" style="margin-left:8px">New game</button>
+      <button class="btn" id="btn-restart" style="margin-left:8px">Exit</button>
     </div>
   </div>
 </div>
@@ -52,7 +123,14 @@
 <!-- ================= OVERLAYS ================= -->
 <div class="overlay hidden" id="over-overlay"><div class="box">
   <h2 id="over-title"></h2><p id="over-text"></p>
-  <button class="btn primary" onclick="location.reload()">Play again</button>
+  <div id="over-actions"></div>
+</div></div>
+
+<!-- ================= TUTORIAL ================= -->
+<div class="overlay hidden" id="tutorial-overlay"><div class="box">
+  <div class="tut-step" id="tut-step"></div>
+  <h2 id="tut-title"></h2><p id="tut-text"></p>
+  <div style="text-align:center;margin-top:14px"><button class="btn primary" id="tut-next">Next</button></div>
 </div></div>
 
 <div class="overlay hidden" id="help-overlay"><div class="box" id="help-box">
@@ -90,15 +168,32 @@
   <div style="text-align:center;margin-top:14px"><button class="btn primary" id="btn-help-close">Close</button></div>
 </div></div>
 
-<!-- engine scripts: order matters (plain scripts, shared global scope) -->
-<script src="js/config.js"></script>
-<script src="js/cards.js"></script>
-<script src="js/archetypes.js"></script>
-<script src="js/state.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/render.js"></script>
-<script src="js/input.js"></script>
-<script src="js/main.js"></script>
+<!-- ================= USERNAME MODAL ================= -->
+<div id="username-modal" class="overlay hidden"><div class="box">
+  <h2>Choose a username</h2>
+  <p>Letters, digits, _ and - only — 3 to 20 characters.</p>
+  <input id="username-input" maxlength="20" autocomplete="off" spellcheck="false">
+  <div id="username-msg"></div>
+  <div style="margin-top:14px">
+    <button class="btn primary" id="username-confirm">Confirm</button>
+    <button class="btn" id="username-cancel">Cancel</button>
+  </div>
+</div></div>
+
+<!-- engine scripts: classic global scripts, served verbatim from public/ -->
+<script src="./js/config.js"></script>
+<script src="./js/cards.js"></script>
+<script src="./js/archetypes.js"></script>
+<script src="./js/state.js"></script>
+<script src="./js/engine.js"></script>
+<script src="./js/ai.js"></script>
+<script src="./js/render.js"></script>
+<script src="./js/input.js"></script>
+<script src="./js/campaign.js"></script>
+<script src="./js/main.js"></script>
+<script src="./js/collection.js"></script>
+<script src="./js/decks.js"></script>
+<!-- the only Vite-bundled module: Firebase auth + per-user profile -->
+<script type="module" src="./src/account.js"></script>
 </body>
 </html>

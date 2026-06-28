@@ -48,7 +48,7 @@ Essence accrues without limit and is never wasted. You spend it on two things:
 
 | Purchase | Cost |
 |---|---|
-| Summon your form | **Fear 8 · Knowledge 12 · Justice 15**, +5 each time it is unmade |
+| Summon your form | **Fear 9 · Knowledge 13 · Justice 15**, +5 each time it is unmade |
 | Your form's active ability | varies by Abstract, once per turn |
 
 ### The manifested form
@@ -58,16 +58,20 @@ When you summon, your Abstract takes physical form at the centre. While it stand
 | | **FEAR** | **JUSTICE** | **KNOWLEDGE** |
 |---|---|---|---|
 | Geometry | Pentagon (5 nodes) | Triangle (3 nodes) | Octagon (8 nodes, distillable to 4) |
-| Form HP / summon cost | 6 HP · 8 essence | 10 HP · 15 essence | 10 HP · 12 essence |
+| Form HP / summon cost | 6 HP · 9 essence | 10 HP · 15 essence | 10 HP · 13 essence |
 | On arrival | Every empty node fills with a 1/1 Terror Spider | Day of Judgement: each enemy follower takes damage equal to its own Attack | Awakening: your followers gain +1 invoke value; draw a card |
-| Aura | 3 damage, and a random enemy follower is Terrified (cannot act next turn) | If outnumbered, 2 damage to a random enemy follower; otherwise restore 1 HP | Draw a card and gain 1 mana |
+| Aura | 2 damage, and a random enemy follower is Terrified (cannot act next turn) | If outnumbered, 2 damage to a random enemy follower; if ahead, restore 2 HP; at even numbers, both | Draw a card and gain 1 mana |
 | Ability (essence) | Brood (3): summon a 2/2 Giant Spider that deals 1 damage on death | Verdict (6): destroy the strongest enemy follower | Insight (4): draw 2 cards; in communion, also +1 essence and 1 damage |
 
 Three relationships with the god: Fear is cheap to conjure, quick to fall, and always returning — an aggro deck whose summon is a weapon. Justice is the expensive fortress, arriving late and judging hard. Knowledge sits between, and it alone can **distil** its diagram: spells dissolve empty nodes forever, neighbours join (sometimes forging new links), the polygon redraws itself, and communion comes within reach.
 
+### Statuses
+
+A few effects hold a follower in check. **Terrified** means simply *cannot act* — used everywhere a follower is frozen for a turn (Fear's aura, Paralysing Fright). Some sources stack extra harm on top: Paralysing Fright, for instance, Terrifies a follower for two turns *and* bleeds it 1 each turn. Hover any follower to read its current statuses in full.
+
 ### The litany
 
-Your deck never runs dry: when it empties, your spent cards shuffle back in — *the litany begins anew*. But a card drawn to a full hand is **forgotten**, gone from the cycle for good. And no duel lasts forever: from turn 25, both cores decay at the start of each turn — 1, then 2, then 3… Reality reasserts itself.
+Your deck never runs dry: when it empties, your spent cards shuffle back in — *the litany begins anew*. But a card drawn to a full hand is **forgotten**, gone from the cycle for good. A rare few cards are **Apparitions** — capped at one per deck and forgotten the moment they are played. And no duel lasts forever: from turn 25, both cores decay at the start of each turn — 1, then 2, then 3… Reality reasserts itself.
 
 ### Controls
 
@@ -79,49 +83,74 @@ Your deck never runs dry: when it empties, your spent cards shuffle back in — 
 | **Esc** / Cancel / click empty ground | Deselect |
 | **Enter** | End turn |
 
+## Accounts, decks & campaign
+
+Free play needs no account — pick an Abstract and duel the Adversary. Sign in with Google to unlock the rest:
+
+- **Decks.** Each Abstract has a read-only default deck plus up to three of your own: 20 cards, at most 3 copies of any card (1 for Apparitions). Build and rename them in the deck editor.
+- **Collection.** Browse every card by Abstract. Locked cards stay visible and show how they are earned.
+- **Campaign.** *Welcome to Abstracts* is a sequence of designed duels, each with a short tutorial, a tailored opponent, and a card reward granted on your first victory. Three spells are earned only this way: **Mind Surge**, **Chess Move**, and **Paralysing Fright**.
+
+Every game opens with a **coin flip** for turn order; whoever goes second draws an extra opening card to compensate.
+
+Your account stores only a small profile — username, chosen emblem, decks, unlocked cards, and campaign progress. Card and rule definitions live in the game code, never on the server, and security is enforced by Google sign-in plus per-user database rules.
+
 ## Running locally
 
-No build step, no dependencies, no server. The game is plain HTML, CSS, and JavaScript:
+The game is a [Vite](https://vitejs.dev/) project. With [Node.js](https://nodejs.org/) installed:
 
 ```bash
 git clone https://github.com/Alex-Caian/abstracts.git
 cd abstracts
-# open index.html in any modern browser — that's it
+npm install
+npm run dev      # local dev server with hot reload
+npm run build    # production build into dist/
 ```
+
+The game logic is plain classic scripts served as-is; only the accounts layer (Firebase) is bundled. The core game runs without an account — sign-in and saved progress require the Firebase project to be configured.
 
 ## Project structure
 
 ```
 abstracts/
-├── index.html          # markup shell; loads styles and scripts in order
-├── css/
-│   └── style.css       # all styling, theming via CSS custom properties
-└── js/
-    ├── config.js       # game constants and node-effect definitions
-    ├── cards.js        # the card database (followers and spells)
-    ├── archetypes.js   # the three Abstracts: geometry, decks, powers
-    ├── state.js        # game state container and accessors
-    ├── engine.js       # core rules: turns, combat, essence, summoning
-    ├── ai.js           # the Adversary: plays either seat, links-aware
-    ├── render.js       # all DOM rendering (no game rules here)
-    ├── input.js        # click, drag-and-drop, and keyboard handling
-    └── main.js         # bootstrap and deck-select screen
+├── index.html              # markup shell; loads the game scripts in order + the accounts module
+├── package.json            # Vite (dev) and Firebase
+├── vite.config.js          # base:'./' for the /abstracts/ GitHub Pages sub-path
+├── public/                 # served verbatim by Vite (not bundled)
+│   ├── css/style.css       # all styling, theming via CSS custom properties
+│   ├── playmats/           # per-Abstract board backdrops
+│   └── js/                 # classic global scripts (shared scope, load order matters)
+│       ├── config.js       # game constants and node-effect definitions
+│       ├── cards.js        # the card database (followers and spells)
+│       ├── archetypes.js   # the three Abstracts: geometry, decks, powers
+│       ├── state.js        # game state container and accessors
+│       ├── engine.js       # core rules: turns, combat, essence, summoning
+│       ├── ai.js           # the Adversary: plays either seat, links-aware
+│       ├── render.js       # all DOM rendering (no game rules here)
+│       ├── input.js        # click, drag-and-drop, and keyboard handling
+│       ├── campaign.js     # campaign definitions and progression
+│       ├── main.js         # bootstrap, menus, and tutorials
+│       ├── collection.js   # the card collection gallery
+│       └── decks.js        # the deck manager and editor
+└── src/
+    └── account.js          # the only bundled module: Firebase auth + per-user profile
 ```
 
 ### Architecture notes
 
-- **Zero dependencies.** Vanilla JavaScript with plain `<script>` tags sharing global scope — load order in `index.html` matters and is documented there.
-- **Data-driven design.** Cards, archetypes, and node effects are declarative objects in `cards.js`, `archetypes.js`, and `config.js`. Adding a card is one line; adding an Abstract is one object (geometry, deck, and powers included). Geometry is per-player and mutable at runtime — Knowledge's Distillation reshapes the board mid-game.
-- **Strict layering.** `engine.js` contains rules and never touches the DOM beyond delegated helpers; `render.js` draws state and contains no rules; `input.js` translates user intent into engine calls.
-- **Touch-first dragging.** Drag-and-drop is built on Pointer Events rather than the HTML5 drag API, so the same code path serves mouse and touch — the game is playable on mobile. A ghost card follows the pointer and the drop target is resolved with `elementFromPoint`. One quirk worth knowing: the hand is never re-rendered during a drag; node highlights are applied directly rather than through the normal render pass (see `input.js`).
-- **Simulation-tuned.** Balance is tuned with a headless jsdom harness: 50+ automated rule checks plus AI-vs-AI batch simulations across every matchup and seating, measuring win rates, game length, and summon timing.
+- **Deliberately hybrid.** The game itself is dependency-free vanilla JavaScript — plain `<script>` tags sharing global scope, load order documented in `index.html`. Only the accounts layer (`src/account.js`) is an ES module that Vite bundles, pulling in Firebase. The two halves bridge through `window.Abstracts` and `window.Account`.
+- **Data-driven design.** Cards, archetypes, node effects, and campaigns are declarative objects in `cards.js`, `archetypes.js`, `config.js`, and `campaign.js`. Adding a card is one line; adding an Abstract is one object. Geometry is per-player and mutable at runtime — Knowledge's Distillation reshapes the board mid-game.
+- **Strict layering.** `engine.js` contains rules and never touches the DOM beyond delegated helpers; `render.js` draws state and contains no rules; `input.js` translates user intent into engine calls. This separation is what keeps eventual host-authoritative multiplayer feasible.
+- **Touch-first dragging.** Drag-and-drop is built on Pointer Events rather than the HTML5 drag API, so the same code path serves mouse and touch — the game is playable on mobile. A ghost card follows the pointer and the drop target is resolved with `elementFromPoint`.
+- **Public by design.** The Firebase web config is shipped in the client (it is an identifier, not a secret); all real protection lives in Firebase Auth and Firestore security rules.
 
 ## Releases
 
-The project follows a staging → release flow: changes are developed and playtested in a local staging copy, then copied here, committed, and tagged (`v0.x.y`, loosely semantic — middle number for mechanics and features, last for fixes). Each push to `main` deploys automatically to GitHub Pages.
+The project follows a staging → release flow: changes are developed and playtested in a local staging copy, then copied here, committed, and tagged (`v0.x.y`, loosely semantic — middle number for mechanics and features, last for fixes). A GitHub Actions workflow builds the site with Vite and deploys it to GitHub Pages on every push to `main`.
 
 | Version | Highlights |
 |---|---|
+| v0.3.0 | The progression update. **Accounts** (Google sign-in, editable username, profile emblems) unlock **deck-building** (custom 20-card decks with per-card copy caps and an Apparition class), a **Collection** gallery that shows how locked cards are earned, and a multi-stage **Campaign** — *Welcome to Abstracts* — with tutorials, tailored opponents, and cards won by playing, including three new unlockable spells: Mind Surge, Chess Move, and Paralysing Fright. Every duel now opens with a **coin-flip** turn order (the second player draws an extra card). Full **balance + lore pass** across all three Abstracts, with new Justice cards (Oathkeeper, Magistrate, Punishing Brute) and per-Abstract playmats. **Terrified** is now the single "cannot act" status. Fear toned down: summon 8→9, Terror Spiders lose invoke, aura 3→2 (Knowledge summon 12→13). Under the hood, the static site becomes a Vite build with a Firebase backend, deployed via GitHub Actions |
 | v0.2.4 | The centre becomes the concept: the HP ring gives way to each Abstract's emblem — sword→scales, egg-sac→spider, closed→open book — which awakens on summon (larger, glowing, gently breathing while manifested, and fading to black as the core bleeds). Spell casts crumble to dust as a "spent" cue; triumph now takes your own deck's colour; the opponent's hand is shown face-down. Balance: Twin Prophets only doubles on adjacent nodes (else one), Justice's aura reworked — strike when outnumbered, mend 2 when ahead, both when even — and Tribunal dropped to 4 mana. Trimmed UI text: board labels and the misleading "cannot invoke" note removed |
 | v0.2.3 | Polish pass: spokes now light from each occupied node to the core (quieter than links), the core luminates when a summon is affordable and arrives with an ignite-and-shockwave flourish, Tribunal heals the manifested form, lore wording tightened (core, never "hero"), unused cards retired ahead of deck-building, and dead CSS/tooltip duplication cleaned up |
 | v0.2.2 | The ritual update: link-gated invoking, communion, per-Abstract summon costs, Knowledge's distillable octagon (Twin Prophets, Veil of Theory, Distillation, Refutation), aggro Fear (cheap recurring form, Mass Hysteria, Giant Spiders), the litany (decks recycle, overdraw forgets), turn-25 decay clock, Terrified status, AI-vs-AI balance simulator |
@@ -131,8 +160,9 @@ The project follows a staging → release flow: changes are developed and playte
 
 ## Roadmap
 
-- **Progression (v0.3.x)** — accounts, card collections, deck-building, and campaigns that unlock cards through missions. No pack openings, ever: rewards come from play.
-- **Multiplayer (v0.4.x)** — private 1v1 rooms via shareable code.
+- **Progression (v0.3.x)** — *shipped.* Accounts, card collections, deck-building, and a campaign that unlocks cards through play. No pack openings, ever: rewards come from winning.
+- **More content (v0.3.x)** — further campaigns and stages, the first true Apparition cards, and deeper card pools so decks can tighten toward max-two copies.
+- **Multiplayer (v0.4.x)** — private 1v1 rooms via shareable code, turn-based and host-authoritative (no matchmaking, no game server).
 - **Visual overhaul (v0.5.x)** — effects, card art, and flavour treatment for the Abstracts.
 - **The balance break** — deck-aware AI opponents and serious meta tuning, building on the simulator.
 - **New Abstracts (v0.6.x)** — one or two new concepts, each bending a different rule, introduced through the campaign.

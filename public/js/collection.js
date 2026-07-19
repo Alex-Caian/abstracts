@@ -36,6 +36,8 @@ const CARD_HELP = {
   f_hound:   'Focusing on your chants will hardly work when you hear the growls.',
   f_wraith:  'My death will not be forgotten.',
   f_stalker: 'Dines alone.',
+  f_grow:    'It grows by the minute!',
+  f_ap_senths: 'I AM HERE, WITH *ALL* OF MY CHILDREN...',
   /* JUSTICE */
   j_herald:  'A devoted invoker.',
   j_vindic:  'This is God\'s chosen place.',
@@ -53,7 +55,8 @@ const CARD_HELP = {
 };
 function cardExplanations(cid){
   const out = [];
-  if (CARD_HELP[cid]) out.push(CARD_HELP[cid]);
+  if (CARD_HELP[cid]) out.push(CARD_HELP[cid].replace(/\*([^*]+)\*/g, '<em>$1</em>'));   // *word* -> emphasis
+  const c = CARDS[cid]; if (c && c.explain) out.push(c.explain);   // rules clarification (e.g. Web-spinning's "bonded")
   return out;
 }
 
@@ -68,7 +71,7 @@ function buildCollection(){ renderAbstractChooser(); }
 function renderAbstractChooser(){
   const el = document.getElementById('collection-list'); if(!el) return;
   el.innerHTML = `<div class="pick-row">` + Object.keys(ARCH).map(arch => {
-    const cards = Object.keys(CARDS).filter(c => CARDS[c].arch === arch);
+    const cards = Object.keys(CARDS).filter(c => CARDS[c].arch === arch && !CARDS[c].hidden);
     const owned = cards.filter(isUnlocked).length;
     return `<div class="pick ${ARCH[arch].css}" data-arch="${arch}">
       ${typeof sigilSvg === 'function' ? sigilSvg(arch) : ''}
@@ -79,10 +82,11 @@ function renderAbstractChooser(){
   el.querySelectorAll('.pick').forEach(t => t.addEventListener('click', () => renderArchGallery(t.dataset.arch)));
 }
 
-function renderArchGallery(arch, filter){
+function renderArchGallery(arch, tfilter, mfilter){
   const el = document.getElementById('collection-list'); if(!el) return;
-  filter = filter || 'all';
-  const all = Object.keys(CARDS).filter(c => CARDS[c].arch === arch);
+  tfilter = tfilter || 'all';
+  mfilter = Array.isArray(mfilter) ? mfilter : [];   // selected mana costs (multi-select); empty = all
+  const all = Object.keys(CARDS).filter(c => CARDS[c].arch === arch && !CARDS[c].hidden);
   const owned = all.filter(isUnlocked).length;
   /* order: followers first, then spells; within each, ascending mana cost */
   const ordered = all.slice().sort((a,b)=>{
@@ -90,14 +94,26 @@ function renderArchGallery(arch, filter){
     const ta = A.t === 'f' ? 0 : 1, tb = B.t === 'f' ? 0 : 1;
     return ta !== tb ? ta - tb : A.cost - B.cost;
   });
-  const shown = filter === 'all' ? ordered : ordered.filter(c => CARDS[c].t === (filter === 'spells' ? 's' : 'f'));
-  const fbtn = (id,label) => `<button class="lib-filt ${filter===id?'on':''}" data-filt="${id}">${label}</button>`;
+  let shown = ordered;
+  if(tfilter !== 'all') shown = shown.filter(c => CARDS[c].t === (tfilter === 'spells' ? 's' : 'f'));
+  if(mfilter.length) shown = shown.filter(c => mfilter.includes(CARDS[c].cost));
+  const tbtn = (id,label) => `<button class="lib-filt ${tfilter===id?'on':''}" data-tfilt="${id}">${label}</button>`;
+  const mbtn = (m,label,on) => `<button class="lib-filt ${on?'on':''}" data-mfilt="${m}">${label}</button>`;
+  const manaRow = mbtn('all','All',mfilter.length===0) + [0,1,2,3,4,5,6,7,8,9,10].map(m => mbtn(m,m,mfilter.includes(m))).join('');
   el.innerHTML =
     `<div class="camp-head ${ARCH[arch].css}">${ARCH[arch].name} <span class="lib-count">${owned}/${all.length}</span></div>` +
-    `<div class="lib-filter ${ARCH[arch].css}">${fbtn('all','All')}${fbtn('followers','Followers')}${fbtn('spells','Spells')}</div>` +
+    `<div class="lib-filter ${ARCH[arch].css}">${tbtn('all','All')}${tbtn('followers','Followers')}${tbtn('spells','Spells')}</div>` +
+    `<div class="lib-filter lib-mana ${ARCH[arch].css}"><span class="lib-flabel">Mana</span>${manaRow}</div>` +
     `<div class="lib-grid">` + shown.map(c => cardTileHtml(c, isUnlocked(c))).join('') + `</div>` +
     `<button class="btn" id="lib-arch-back" style="margin-top:4px">← Abstracts</button>`;
-  el.querySelectorAll('.lib-filt').forEach(b => b.addEventListener('click', () => renderArchGallery(arch, b.dataset.filt)));
+  el.querySelectorAll('.lib-filt[data-tfilt]').forEach(b => b.addEventListener('click', () => renderArchGallery(arch, b.dataset.tfilt, mfilter)));
+  el.querySelectorAll('.lib-filt[data-mfilt]').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.mfilt;
+    let next;
+    if(v==='all') next = [];
+    else { const n=+v; next = mfilter.includes(n) ? mfilter.filter(x=>x!==n) : mfilter.concat(n); }
+    renderArchGallery(arch, tfilter, next);
+  }));
   document.getElementById('lib-arch-back').addEventListener('click', renderAbstractChooser);
   el.querySelectorAll('.lib-card').forEach(t =>
     t.addEventListener('click', () => openCardZoom(t.dataset.cid)));
@@ -109,6 +125,7 @@ function closeCardZoom(){ const ov = document.getElementById('card-zoom'); if(ov
 /* unlock condition for a locked card, derived from the campaign rewards */
 const LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>';
 function unlockCondition(cid){
+  if(CARDS[cid] && CARDS[cid].unlockHint) return CARDS[cid].unlockHint;   // manual hint (e.g. a reward not yet wired to a stage)
   if(typeof CAMPAIGN === 'object' && CAMPAIGN){
     for(const ck in CAMPAIGN){
       const camp = CAMPAIGN[ck], games = camp.games || [];

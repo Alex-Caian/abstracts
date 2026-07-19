@@ -13,12 +13,18 @@ const CARDS = {
   f_hound:   {t:'f',arch:'fear',name:'Phobia Hound',cost:3,atk:3,hp:3,inv:1,txt:'On play: a random enemy follower cannot invoke next turn.',fx:'muteInvoke'},
   f_wraith:  {t:'f',arch:'fear',name:'Terror Wraith',cost:4,atk:4,hp:3,inv:1,txt:'On death: deal 2 damage to the enemy.',dr:'dr_dmg2'},
   f_stalker: {t:'f',arch:'fear',name:'Nightmare Stalker',cost:5,atk:5,hp:5,inv:0,soloInv:2,txt:'Solitary: while it has no linked neighbour, it invokes for 2.'},
+  f_grow:    {t:'f',arch:'fear',name:'Growth Spider',cost:3,atk:0,hp:4,inv:1,grow:1,dr:'dr_growdraw',locked:true,txt:'At the start of your turn it gains +1 Attack. On death, draw a card, or 2 if its Attack is 3 or more.'},
   f_rite:    {t:'s',arch:'fear',name:'Sacrificial Rite',cost:1,txt:'Destroy a friendly follower. Gain essence equal to its invoke value +2.',fx:'sacrifice',target:'friendUnit'},
   f_chill:   {t:'s',arch:'fear',name:'Chill of Dread',cost:2,txt:'Deal 2 damage to an enemy follower. Gain 1 essence.',fx:'chill',target:'enemyUnit'},
   f_terror:  {t:'s',arch:'fear',name:'Mass Hysteria',cost:3,txt:'Each enemy follower loses 1 Attack, 1 Health, or both. Chosen at random.',fx:'massHysteria'},
   f_wave:    {t:'s',arch:'fear',name:'Wave of Terror',cost:4,txt:'Deal 2 damage to all enemy followers.',fx:'aoe2'},
   f_hysteria:{t:'s',arch:'fear',name:'Occult Power',cost:2,txt:'Your followers gain +1 Attack.',fx:'atkUpAll'},
   f_fright:  {t:'s',arch:'fear',name:'Paralysing Fright',cost:4,txt:'Inflict Terrified on an enemy follower for 2 turns. It also takes 1 damage at the start of each of those turns.',fx:'paralyse',target:'enemyUnit',locked:true},
+  f_taint:   {t:'s',arch:'fear',name:'Tainted Dreams',cost:1,txt:'Curse an enemy follower or abstract: 1 damage at the start of each of its turns for 3 turns, then draw a card.',fx:'curse',target:'enemyAny',locked:true},
+  f_ap_senths:{t:'f',arch:'fear',name:'Senths, the Mother',cost:10,atk:9,hp:8,inv:5,apparition:true,locked:true,dr:'dr_senths',unlockHint:'Complete The Weaving Dark campaign.',txt:'On death, summon a 4/5 Hellspawn on its node.'},
+  f_swarm:   {t:'s',arch:'fear',name:'Spider Swarm',cost:0,txt:'Summon four 1/1 Terror Spiders on empty nodes.',fx:'summon4spiders',hidden:true,locked:true},
+  f_gargant: {t:'s',arch:'fear',name:'Gargantuan Spider',cost:1,txt:'Summon a 5/5 Gargantuan Spider on an empty node.',fx:'summonGargantuan',hidden:true,locked:true},
+  f_web:     {t:'s',arch:'fear',name:'Web-spinning',cost:5,txt:'Choose 2 of your nodes. They\'re now linked and bonded',explain:'<b>Bonded:</b> a follower on one node also invokes and strikes for the follower on the other (against the same target). Both still act, so the pair does double. Lasts all game.',fx:'webspin',target:'bondNodes',locked:true},
   /* JUSTICE — heavy curve: champions arrive slowly, few can invoke */
   j_herald:  {t:'f',arch:'justice',name:'Court Herald',cost:3,atk:2,hp:4,inv:2,txt:''},
   j_vindic:  {t:'f',arch:'justice',name:'Vindicator',cost:3,atk:3,hp:4,inv:1,lockNode:true,txt:'Vindicators may only invoke from the node where your first Vindicator was played.'},
@@ -44,5 +50,8 @@ const CARDS = {
   k_twin:    {t:'s',arch:'knowledge',name:'Twin Prophets',cost:2,txt:'Summon two 1/1 Prophets (invoke 1) on adjacent empty nodes. If no adjacent pair is free, summon one.',fx:'twinProphets'},
   k_veil:    {t:'s',arch:'knowledge',name:'Veil of Theory',cost:3,txt:'Your followers gain +0/+2.',fx:'veil'},
   k_distil:  {t:'s',arch:'knowledge',name:'Distillation',cost:3,txt:'Remove an empty node from your diagram forever. Its neighbours join.',fx:'distil',target:'emptyNode'},
-  k_refute:  {t:'s',arch:'knowledge',name:'Refutation',cost:4,txt:'Transform an enemy follower into a 1/1 Footnote.',fx:'refute',target:'enemyUnit'}
+  k_refute:  {t:'s',arch:'knowledge',name:'Refutation',cost:4,txt:'Transform an enemy follower into a 1/1 Footnote.',fx:'refute',target:'enemyUnit'},
+  /* HIDDEN — AI-only campaign cards: never in the Collection, deck editor, or unlockable */
+  k_redact:  {t:'s',arch:'knowledge',name:'Redaction',cost:3,txt:'Each player shuffles 2 random cards from their hand into their deck.',fx:'shuffle2',hidden:true,locked:true},
+  k_amnes:   {t:'s',arch:'knowledge',name:'Amnesia',cost:5,txt:'Each player shuffles 3 random cards from their hand into their deck.',fx:'shuffle3',hidden:true,locked:true}
 };

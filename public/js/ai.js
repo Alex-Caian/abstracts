@@ -6,6 +6,12 @@
    ===================================================================== */
 async function aiTurn(p){
   const h=foe(p);
+  if(p.idleTurns && G.turnNo <= p.idleTurns){   // quiet lock: the AI stays passive for its first N turns
+    log(`${p.name} watches, unmoving.`, 'foe');
+    await sleep(900);
+    if(!G.over) endTurn();
+    return;
+  }
   const maySummon = G.turnNo > (p.summonLockTurns||0);   // scenario summon-lock (e.g. tutorial Fear holds 4 turns)
   await sleep(700); if(G.over) return;
   if(maySummon && !p.abstractUnit && p.invoke>=p.summonCost){ summonAbstract(p); await sleep(900); }
@@ -38,6 +44,8 @@ async function aiTurn(p){
     aiActUnit(p,h,ref,u);
     await sleep(700);
   }
+  if(G.over) return;
+  activateBoons(p); renderAll(); await sleep(600);   // spend banked essence on active Boons (e.g. Justice's Ordain)
   if(G.over) return;
   if(canUseAbility(p) && aiAbilityWorthIt(p,h)){ useAbility(p); await sleep(700); }
   await sleep(500);
@@ -78,6 +86,7 @@ function aiSpellOk(p,h,c){
     case 'veil': return unitRefs(p).length>=2;
     case 'atkUpAll': return unitRefs(p).length>=3;
     case 'twinProphets': return p.board.some(s=>!s);
+    case 'summon4spiders': case 'summonGargantuan': return p.board.some(s=>!s);
     case 'refute': return eUnits.some(r=>getUnit(r).atk>=3);
     case 'distil': {
       if(p.board.length<=4) return false;

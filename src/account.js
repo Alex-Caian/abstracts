@@ -44,11 +44,12 @@ function defaultDeckFor(arch){
   return { id:'default', name:'Default', cards:(((ARCH[arch]||{}).deck) || []).slice() };
 }
 
-/* the starter collection = every current card. Future unlockable cards will
-   carry `locked:true` in cards.js and are NOT auto-granted here. */
+/* the starter collection = every current card. Unlockable cards carry
+   `locked:true` in cards.js; AI-only cards carry `hidden:true`. Neither is
+   auto-granted here (hidden cards are never obtainable by players at all). */
 function starterCards(){
   const C = A().CARDS || {};
-  return Object.keys(C).filter(cid => !C[cid].locked);
+  return Object.keys(C).filter(cid => !C[cid].locked && !C[cid].hidden);
 }
 
 /* a fresh account: one read-only Default deck per Abstract, all current cards unlocked */

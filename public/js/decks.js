@@ -88,7 +88,7 @@ function renderDeckEditor(){
   const size = acc.rules.DECK_SIZE, max = acc.rules.MAX_COPIES;
   const total = deckTotal(ed.counts);
   const legal = acc.legality(expandCounts(ed.counts)).ok;
-  const pool = Object.keys(CARDS).filter(c=>CARDS[c].arch===arch && isUnlocked(c))
+  const pool = Object.keys(CARDS).filter(c=>CARDS[c].arch===arch && !CARDS[c].hidden && isUnlocked(c))
     .sort((a,b)=>{ const A=CARDS[a],B=CARDS[b]; const ta=A.t==='f'?0:1, tb=B.t==='f'?0:1; return ta!==tb?ta-tb:A.cost-B.cost; });
   const el = document.getElementById('deckedit-body');
   el.innerHTML = `

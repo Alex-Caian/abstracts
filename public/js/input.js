@@ -39,9 +39,9 @@ document.addEventListener('click',ev=>{
   const cardEl=ev.target.closest('.card[data-hand]');
   if(cardEl){
     const i=+cardEl.dataset.hand, c=CARDS[p.hand[i]];
-    if(c.cost>p.mana){ flashHint(`Not enough mana for ${c.name} (${c.cost}).`); return; }
-    if(c.t==='f'){ flashHint(`Drag ${c.name} onto one of your nodes to play it.`); return; }
-    ui.selUnit=null; ui.targeting=null;
+    ui.selUnit=null; ui.targeting=null;   // clicking any card cancels a pending target/selection first
+    if(c.cost>p.mana){ flashHint(`Not enough mana for ${c.name} (${c.cost}).`); renderAll(); return; }
+    if(c.t==='f'){ flashHint(`Drag ${c.name} onto one of your nodes to play it.`); renderAll(); return; }
     if(ui.selCard===i){ ui.selCard=null; renderAll(); return; }
     ui.selCard=i;
     if(!c.target){ const idx=ui.selCard; ui.selCard=null; dissolveCard(idx); castSpell(p,idx,null); return; }
@@ -51,8 +51,14 @@ document.addEventListener('click',ev=>{
       if(p.board.length<=4){ flashHint('The diagram can tighten no further.'); ui.selCard=null; renderAll(); return; }
       if(!p.board.some(s=>!s)){ flashHint('No empty node to dissolve.'); ui.selCard=null; renderAll(); return; }
     }
+    if(c.target==='bondNodes'){   // Web-spinning: pick two of your own nodes
+      ui.targeting={mode:'bondNodes', picks:[],
+        hint:'Web-spinning: click the first of two nodes to bond.',
+        onComplete:(a,b)=>{ const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,{pi:0,zone:'bond',a,b}); }};
+      renderAll(); return;
+    }
     ui.targeting={mode:c.target,
-      hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':'Choose one of your followers.'),
+      hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='enemyAny'?'Choose an enemy follower or abstract.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':'Choose one of your followers.')),
       onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,ref); }};
     renderAll(); return;
   }
@@ -61,9 +67,22 @@ document.addEventListener('click',ev=>{
     const foeUnit=ev.target.closest('#board-foe .unit');
     const foeCentre=ev.target.closest('#board-foe .centre');
     const youUnit=ev.target.closest('#board-you .unit');
-    if((t.mode==='enemyUnit'||t.mode==='attack') && foeUnit){ t.onPick({pi:1,zone:'board',idx:+foeUnit.dataset.idx}); return; }
+    if(t.mode==='bondNodes'){
+      const nodeEl=ev.target.closest('.node[data-side="you"]');
+      if(nodeEl){
+        const idx=+nodeEl.dataset.idx;
+        if(!t.picks.includes(idx)){
+          t.picks.push(idx);
+          if(t.picks.length>=2){ t.onComplete(t.picks[0], t.picks[1]); return; }
+          t.hint='Now choose the second node to bond.'; flashHint('Now choose the second node to bond.'); renderAll(); return;
+        }
+        return;   // same node clicked twice: ignore
+      }
+      clearSelection(); renderAll(); return;   // clicked off the diagram: cancel
+    }
+    if((t.mode==='enemyUnit'||t.mode==='attack'||t.mode==='enemyAny') && foeUnit){ t.onPick({pi:1,zone:'board',idx:+foeUnit.dataset.idx}); return; }
     /* the centre IS the face (form or exposed core); the strip works too */
-    if(t.mode==='attack' && (foeCentre || ev.target.closest('#strip-foe'))){ t.onPick({pi:1,zone:'hero'}); return; }
+    if((t.mode==='attack'||t.mode==='enemyAny') && (foeCentre || ev.target.closest('#strip-foe'))){ t.onPick({pi:1,zone:'hero'}); return; }
     if(t.mode==='friendUnit' && youUnit){ t.onPick({pi:0,zone:'board',idx:+youUnit.dataset.idx}); return; }
     if(t.mode==='emptyNode'){
       const nodeEl=ev.target.closest('.node[data-side="you"]');

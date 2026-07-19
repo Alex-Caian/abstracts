@@ -25,6 +25,7 @@ function buildBoards(){
       svg+=`<line class="edge" data-e="${i}" x1="${pt.x}" y1="${pt.y}" x2="${q.x}" y2="${q.y}"></line>`;
     });
     pts.forEach((pt,i)=>{ svg+=`<line class="spoke" data-s="${i}" x1="50" y1="50" x2="${pt.x}" y2="${pt.y}"></line>`; });
+    svg+='<g class="bonds"></g>';
     svg+='</svg>';
     let html=svg;
     p.angles.forEach((ang,i)=>{
@@ -47,12 +48,38 @@ function buildBoards(){
     `${a.abstract.onSummonTxt}<br>${a.abstract.auraTxt}<br>`+
     `<b>${ab.name}</b> (${ab.cost} invoke, once per turn) — ${ab.txt}`;
 }
+/* grand "rebirth" flourish when a foe rises again (final-stand revives) */
+function runRebirth(side, arch, msg){
+  const css=(ARCH[arch]||{}).css||'';
+  const flash=document.createElement('div'); flash.className='rebirth-flash '+css; document.body.appendChild(flash);
+  const banner=document.createElement('div'); banner.className='rebirth-banner '+css; banner.textContent=msg||''; document.body.appendChild(banner);
+  const cEl=document.querySelector(`#board-${side} .centre`);
+  if(cEl){ cEl.classList.remove('reborn'); void cEl.offsetWidth; cEl.classList.add('reborn'); }
+  setTimeout(()=>{ flash.remove(); banner.remove(); if(cEl) cEl.classList.remove('reborn'); }, 1700);
+}
 function renderAll(){
   if(!G) return;
   renderStrip('you',you()); renderStrip('foe',enemy());
   renderBoard('you',you()); renderBoard('foe',enemy());
+  renderBoons('you',you()); renderBoons('foe',enemy());
   renderHand(); renderFoeHand(); renderCmd();
   applyHighlights();
+}
+/* campaign Boons: a small stack pinned to the left of the owning side's playmat.
+   Static for the match, but re-rendered each pass so it survives board redraws. */
+function renderBoons(side,p){
+  const board=document.getElementById('board-'+side);
+  const wrap=board && board.parentElement;
+  if(!wrap) return;
+  const list=(typeof boonsFor==='function') ? boonsFor(p) : [];
+  let rail=wrap.querySelector('.boons-rail');
+  if(!list.length){ if(rail) rail.remove(); return; }
+  if(!rail){ rail=document.createElement('div'); rail.className='boons-rail'; wrap.appendChild(rail); }
+  rail.innerHTML=list.map(bn=>{
+    const cost = bn.active ? `<div class="boon-cost">Active · ${bn.active.cost}✦</div>` : '';
+    const acc = bn.arch && ARCH[bn.arch] ? ARCH[bn.arch].css : '';   // per-boon colour override
+    return `<div class="boon ${bn.active?'boon-active':''} ${acc}"><div class="boon-title">${escapeHtml(bn.title||'Boon')}</div><div class="boon-text">${escapeHtml(bn.text||'')}</div>${cost}</div>`;
+  }).join('');
 }
 /* the opponent's concealed hand — face-down backs, one per held card */
 function renderFoeHand(){
@@ -79,6 +106,9 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.cid==='tok_gspider') lines.push(`<b>Brood-spawn. On death: deal 1 damage.</b>`);
   if(u.cid==='tok_prophet') lines.push(`<b>Conjured — a voice in the chorus.</b>`);
   if(u.cid==='tok_footnote') lines.push(`<b>All that remains of something greater.</b>`);
+  if(u.cid==='tok_hellspawn') lines.push(`<b>On death: summon a 2/2 Endspawn (invoke 3).</b>`);
+  if(u.cid==='tok_endspawn') lines.push(`<b>On death: gain 4 essence, summon 3 Spiderlings, deal 2 damage to a random enemy, and a random ally gains +1 Attack.</b>`);
+  if(u.cid==='tok_spiderling') lines.push(`<b>Spawn of the Mother.</b>`);
   const eInv = effInvoke(owner,u,nodeIdx);
   if(u.soloInv){
     if(eInv>0) lines.push(`Invokes for <b>${eInv}</b> essence while <b>alone</b>.`);
@@ -95,6 +125,9 @@ function unitTipHtml(u, owner, nodeIdx){
   if(cdef && cdef.invDrawn && (owner.drawnCount||0) < cdef.invDrawn)
     lines.push(`<b>Unschooled</b> — invokes once you have drawn ${cdef.invDrawn} cards (drawn ${owner.drawnCount||0}).`);
   if(u.terrified) lines.push(`<b>Terrified</b> — cannot act this turn.`);
+  if(u.curses && u.curses.length) lines.push(`<b>Tainted Dreams ×${u.curses.length}</b> — takes ${u.curses.length} damage at the start of each of its turns; the caster draws a card for each stack when it wears off or this dies.`);
+  { const bA=(typeof bondAtkBonus==='function')?bondAtkBonus(owner,nodeIdx):0, bI=(typeof bondInvokeBonus==='function')?bondInvokeBonus(owner,nodeIdx):0;
+    if(bA||bI) lines.push(`<b>Bonded</b> — the web echoes the partner node: +${bA} Attack and +${bI} invoke when it acts.`); }
   if(u.sick) lines.push(`Resting — can act next turn.`);
   lines.push(`<span class="tip-dim">Played on: ${NODE_FX[owner.nodes[nodeIdx]].txt}</span>`);
   return lines.map(l=>`<div>${l}</div>`).join('');
@@ -126,6 +159,7 @@ function renderBoard(side,p){
       node.innerHTML=`<div class="unit ${appar}" data-side="${side}" data-idx="${i}">
         ${eInv>0?`<div class="uinv ${canCh?'':'dim'}">${eInv}</div>`:''}
         ${u.paralysed>0?`<div class="upar">↯</div>`:(u.terrified?`<div class="uterr">✕</div>`:(u.sick?`<div class="usick">zZ</div>`:''))}
+        ${u.curses&&u.curses.length?`<div class="ucurse">☠${u.curses.length}</div>`:''}
         <div class="uname">${u.name}</div>
         <div class="ustats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
         <div class="hover-tip">${unitTipHtml(u,p,i)}</div>
@@ -151,6 +185,12 @@ function renderBoard(side,p){
   board.querySelectorAll('svg .spoke').forEach(sp=>{
     sp.classList.toggle('lit', !!p.board[+sp.dataset.s]);
   });
+  /* Web-spinning bonds: a persistent web strand drawn between each bonded pair */
+  const bg=board.querySelector('svg .bonds');
+  if(bg) bg.innerHTML=(p.bonds||[]).map(b=>{
+    const A=nodePos(p.angles[b.a]), B=nodePos(p.angles[b.b]);
+    return `<line class="bond-edge" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"></line>`;
+  }).join('');
   board.classList.toggle('communion', diagramComplete(p));
   /* centre: the emblem IS the heart now — HP on top, summon cost (chain) below, no ring */
   const c=board.querySelector('.centre');
@@ -190,7 +230,7 @@ function renderHand(){
       <div class="ctype">${c.t==='f'?'Follower':'Spell'}</div>
       <div class="ctext">${c.txt||''}</div>
       ${c.t==='f'?`<div class="cstats"><span class="uatk">${c.atk}</span><span class="cinv">✦ invoke ${c.inv}</span><span class="uhp">${c.hp}</span></div>`:''}
-      ${noTgt?`<div class="hover-tip card-tip"><b>No valid targets.</b></div>`:''}
+      ${noTgt?`<div class="hover-tip card-tip"><b>No valid targets.</b></div>`:(c.explain?`<div class="hover-tip card-explain">${c.explain}</div>`:'')}
     </div>`;
   }).join('');
 }
@@ -236,16 +276,20 @@ function renderCmd(){
   }
 }
 function applyHighlights(){
-  document.querySelectorAll('.node.playable,.unit.targetable,.unit.friend-target,.unit.selected,.hero-strip.targetable,.centre.targetable,.centre.selected')
-    .forEach(e=>e.classList.remove('playable','targetable','friend-target','selected'));
+  document.querySelectorAll('.node.playable,.node.bond-pick,.unit.targetable,.unit.friend-target,.unit.selected,.hero-strip.targetable,.centre.targetable,.centre.selected')
+    .forEach(e=>e.classList.remove('playable','bond-pick','targetable','friend-target','selected'));
   const myTurn=G.turn===0 && !G.over;
   if(!myTurn) return;
   if(ui.targeting){
     const t=ui.targeting;
-    if(t.mode==='enemyUnit'||t.mode==='attack'){
+    if(t.mode==='bondNodes'){
+      document.querySelectorAll('#board-you .node').forEach(e=>e.classList.add('playable'));
+      (t.picks||[]).forEach(idx=>{ const el=document.querySelector(`#board-you .node[data-idx="${idx}"]`); if(el) el.classList.add('bond-pick'); });
+    }
+    if(t.mode==='enemyUnit'||t.mode==='attack'||t.mode==='enemyAny'){
       document.querySelectorAll('#board-foe .unit').forEach(e=>e.classList.add('targetable'));
     }
-    if(t.mode==='attack'){
+    if(t.mode==='attack'||t.mode==='enemyAny'){
       /* the form shields the core: the centre is always the face target */
       document.querySelector('#board-foe .centre').classList.add('targetable');
     }

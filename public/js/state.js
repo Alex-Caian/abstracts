@@ -25,6 +25,10 @@ function makePlayer(archKey, name, isAI, deckOverride){
     abilityUsed:false,      // active ability is once per turn
     lockNode:{},            // per-cid consecrated node index (Vindicator's chosen seat)
     drawnCount:0,           // cards drawn this game (Loremaster's invoke gate)
+    coreCurses:[],          // Tainted Dreams stacks on the abstract: each bleeds 1/turn for 3 turns
+    revives:[],             // "final stand" HP values it rises again with (scenario-set)
+    bonds:[],               // Web-spinning: {a,b} node-index pairs, linked + echoing for the game
+    idleTurns:0,            // scenario "quiet lock": AI passes its first N turns
     abstractUnit:null       // the manifested form: {name,hp,maxHp} — HP only
   };
 }
@@ -43,7 +47,9 @@ function unitRefs(p){
 /* a node is linked if an adjacent node on the ring is occupied */
 function linkedAt(p, idx){
   const n=p.board.length;
-  return !!(p.board[(idx+1)%n] || p.board[(idx-1+n)%n]);
+  if(p.board[(idx+1)%n] || p.board[(idx-1+n)%n]) return true;
+  if(p.bonds) for(const b of p.bonds){ const partner = b.a===idx?b.b:(b.b===idx?b.a:-1); if(partner>=0 && p.board[partner]) return true; }   // a bond acts as a link
+  return false;
 }
 function diagramComplete(p){ return p.board.every(u=>u); }
 function clearSelection(){ ui.selCard=null; ui.selUnit=null; ui.targeting=null; }

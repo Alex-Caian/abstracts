@@ -34,7 +34,9 @@ function pickArch(arch){
   if(acc && acc.user && acc.profile){ showDeckPick(arch); }
   else { newGame(arch); }
 }
-function showDeckPick(arch){
+let deckPickBack = null;   // where the deck-pick Back button returns (set per context)
+function showDeckPick(arch, onPick, onBack){
+  deckPickBack = onBack || null;
   const acc = window.Account;
   const decks = (acc && acc.decksFor) ? acc.decksFor(arch) : [];
   document.getElementById('deckpick-arch').textContent = ARCH[arch].name;
@@ -44,7 +46,9 @@ function showDeckPick(arch){
   ).join('');
   list.querySelectorAll('.camp-stage').forEach(el=>el.addEventListener('click',()=>{
     const deck = decks.find(d=>d.id===el.dataset.deck);
-    newGame(arch, { youDeck: deck && deck.cards });
+    const cards = deck && deck.cards;
+    if(onPick) onPick(cards);
+    else newGame(arch, { youDeck: cards });
   }));
   showScreen('screen-deckpick');
 }
@@ -84,23 +88,74 @@ const TUTORIALS = {
   ]
 };
 
+/* the brand colour for a dialogue speaker, matched by Abstract name (or explicit arch) */
+function speakerColor(speaker, arch){
+  const key = arch || (speaker && Object.keys(ARCH).find(k=>ARCH[k].name===String(speaker).toUpperCase()));
+  return ({fear:'var(--fear)',justice:'var(--justice)',knowledge:'var(--knowledge)'})[key] || 'var(--invoke)';
+}
+/* dialogue text: escape, then render _word_ as emphasis (rendered upright inside the italic line) */
+function fmtDialogue(s){ return escapeHtml(s).replace(/_([^_]+)_/g,'<em>$1</em>'); }
+
 function runTutorial(steps, onDone){
   const ov=document.getElementById('tutorial-overlay'); if(!ov || !steps || !steps.length){ onDone(); return; }
   const titleEl=document.getElementById('tut-title'), textEl=document.getElementById('tut-text'),
-        stepEl=document.getElementById('tut-step'), nextBtn=document.getElementById('tut-next');
+        stepEl=document.getElementById('tut-step'), nextBtn=document.getElementById('tut-next'),
+        backBtn=document.getElementById('tut-back');
   let i=0;
   function show(){ const s=steps[i]; if(stepEl) stepEl.textContent=`${i+1} / ${steps.length}`;
-    titleEl.textContent=s.title; textEl.textContent=s.text; nextBtn.textContent = i===steps.length-1?'Begin':'Next'; }
-  function next(){ i++; if(i>=steps.length){ ov.classList.add('hidden'); nextBtn.removeEventListener('click',next); onDone(); } else show(); }
+    titleEl.style.color=''; titleEl.textContent=s.title; textEl.textContent=s.text;
+    nextBtn.textContent = i===steps.length-1?'Begin':'Next';
+    if(backBtn) backBtn.style.visibility = i===0?'hidden':'visible'; }
+  function cleanup(){ ov.classList.add('hidden'); nextBtn.removeEventListener('click',next); if(backBtn) backBtn.removeEventListener('click',back); }
+  function next(){ i++; if(i>=steps.length){ cleanup(); onDone(); } else show(); }
+  function back(){ if(i>0){ i--; show(); } }
   nextBtn.addEventListener('click', next);
+  if(backBtn) backBtn.addEventListener('click', back);
   show(); ov.classList.remove('hidden');
+}
+
+/* story dialogue before a match — reuses the tutorial overlay in a distinct
+   'dialogue' style. lines: [{speaker, text, arch?}]. Speaker is coloured by
+   its Abstract's brand hue. Falls through if none. */
+function runDialogue(lines, onDone){
+  const ov=document.getElementById('tutorial-overlay');
+  if(!ov || !lines || !lines.length){ if(onDone) onDone(); return; }
+  const titleEl=document.getElementById('tut-title'), textEl=document.getElementById('tut-text'),
+        stepEl=document.getElementById('tut-step'), nextBtn=document.getElementById('tut-next'),
+        backBtn=document.getElementById('tut-back');
+  ov.classList.add('dialogue-mode');
+  let i=0;
+  function show(){ const l=lines[i];
+    if(stepEl) stepEl.textContent='';
+    titleEl.textContent=l.speaker||''; titleEl.style.color=speakerColor(l.speaker, l.arch);
+    textEl.innerHTML=fmtDialogue(l.text||'');
+    nextBtn.textContent = i===lines.length-1?'Begin':'Next';
+    if(backBtn) backBtn.style.visibility = i===0?'hidden':'visible'; }
+  function cleanup(){ ov.classList.add('hidden'); ov.classList.remove('dialogue-mode'); titleEl.style.color=''; nextBtn.removeEventListener('click',next); if(backBtn) backBtn.removeEventListener('click',back); }
+  function next(){ i++; if(i>=lines.length){ cleanup(); if(onDone) onDone(); } else show(); }
+  function back(){ if(i>0){ i--; show(); } }
+  nextBtn.addEventListener('click', next);
+  if(backBtn) backBtn.addEventListener('click', back);
+  show(); ov.classList.remove('hidden');
+}
+
+/* a campaign is locked until its prerequisite campaign's final game is won */
+function campaignUnlocked(camp){
+  if(!camp || !camp.requires) return true;
+  const req = CAMPAIGN[camp.requires]; if(!req || !req.games || !req.games.length) return true;
+  const acc = window.Account;
+  const done = (acc && acc.campaignCompleted) ? acc.campaignCompleted(camp.requires) : [];
+  return done.includes(req.games[req.games.length-1].id);
 }
 
 function renderCampaign(){
   const list=document.getElementById('campaign-list'); if(!list) return;
-  list.innerHTML = Object.values(CAMPAIGN).map(camp=>
-    `<div class="camp-stage" data-camp="${camp.id}"><h3>${escapeHtml(camp.name)}</h3><p>${escapeHtml(camp.blurb||'')}</p></div>`
-  ).join('');
+  list.innerHTML = Object.values(CAMPAIGN).map(camp=>{
+    const unlocked = campaignUnlocked(camp);
+    const req = camp.requires && CAMPAIGN[camp.requires];
+    const note = unlocked ? '' : `<p class="note">Complete ${req?escapeHtml(req.name):'the previous campaign'} first.</p>`;
+    return `<div class="camp-stage ${unlocked?'':'locked'}" ${unlocked?`data-camp="${camp.id}"`:''}><h3>${escapeHtml(camp.name)}${unlocked?'':' · Locked'}</h3><p>${escapeHtml(camp.blurb||'')}</p>${note}</div>`;
+  }).join('');
   list.querySelectorAll('.camp-stage[data-camp]').forEach(el=>el.addEventListener('click',()=>renderCampaignGames(el.dataset.camp)));
 }
 
@@ -131,9 +186,17 @@ function renderCampaignGames(campId){
 }
 
 function startCampaignGame(campId, game){
-  const scen = Object.assign({}, game.scenario, { campaign:{ campId, gameId:game.id, reward:game.reward||null } });
-  if(game.tutorial){ const steps = TUTORIALS[game.tutorial] || TUTORIALS.basics; runTutorial(steps, ()=>newGame(game.arch, scen)); }
-  else newGame(game.arch, scen);
+  const camp = (typeof CAMPAIGN==='object' && CAMPAIGN && CAMPAIGN[campId]) || {};
+  const baseScen = Object.assign({}, game.scenario, { campaign:{ campId, gameId:game.id, reward:game.reward||null } });
+  const acc = window.Account;
+  const canPick = !!(camp.pickDeck && acc && acc.user && acc.profile);   // let the player choose a deck each stage
+  const launch = (youDeck)=>{ const scen = youDeck ? Object.assign({}, baseScen, { youDeck }) : baseScen; newGame(game.arch, scen); };
+  const afterIntro = canPick
+    ? ()=> showDeckPick(game.arch, launch, ()=>{ renderCampaignGames(campId); showScreen('screen-campaign'); })
+    : ()=> launch();
+  if(game.dialogue) runDialogue(game.dialogue, afterIntro);
+  else if(game.tutorial){ const steps = TUTORIALS[game.tutorial] || TUTORIALS.basics; runTutorial(steps, afterIntro); }
+  else afterIntro();
 }
 
 /* ---- menu navigation ---- */
@@ -158,7 +221,7 @@ document.getElementById('home-campaign').addEventListener('click',()=>{ renderCa
   });
 })();
 document.getElementById('select-back').addEventListener('click',()=>showScreen('screen-home'));
-document.getElementById('deckpick-back').addEventListener('click',()=>showScreen('screen-select'));
+document.getElementById('deckpick-back').addEventListener('click',()=>{ if(deckPickBack){ const f=deckPickBack; deckPickBack=null; f(); } else showScreen('screen-select'); });
 document.getElementById('campaign-back').addEventListener('click',()=>showScreen('screen-home'));
 
 /* Debug / test handle — inspect game state from the console as `Abstracts` */

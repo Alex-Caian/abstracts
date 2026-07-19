@@ -52,6 +52,7 @@ function damageFace(p,n){
   }
   p.hp -= n;
   floatNum(document.getElementById('strip-'+side), -n);
+  checkSenthsWatch();
   if(p.hp<=0 && !G.over) endGame(foe(p));
 }
 
@@ -69,14 +70,66 @@ function killUnit(ref){
   log(`${u.name} falls.`, p.isAI?'foe':'you');
   if(u.dr==='dr_dmg2'){ log(`${u.name}'s death curse strikes for 2.`, p.isAI?'foe':'you'); damageFace(foe(p),2); }
   if(u.dr==='dr_dmg1'){ log(`${u.name} bursts — 1 damage.`, p.isAI?'foe':'you'); damageFace(foe(p),1); }
+  if(u.dr==='dr_growdraw'){ const n=u.atk>=3?2:1; log(`${u.name} bursts with growth — draw ${n}.`, p.isAI?'foe':'you'); drawCards(p,n); }
+  if(u.curses && u.curses.length) drawCards(foe(p), u.curses.length);   // Tainted Dreams: dying pays out each remaining curse to the caster
+  /* Senths' apparition cascade: each corpse births the next horror on its vacated node */
+  if(u.dr==='dr_senths'){ spawnToken(p, ref.idx, 'tok_hellspawn'); log(`${u.name} splits open — a Hellspawn tears free.`, p.isAI?'foe':'you'); }
+  if(u.dr==='dr_hellspawn'){ spawnToken(p, ref.idx, 'tok_endspawn'); log(`The Hellspawn ruptures — an Endspawn crawls out.`, p.isAI?'foe':'you'); }
+  if(u.dr==='dr_endspawn'){
+    gainInvoke(p,4);
+    let empt=p.board.map((s,i)=>s?null:i).filter(i=>i!==null);
+    for(let k=0;k<3 && empt.length;k++){ const pick=empt.splice(Math.floor(Math.random()*empt.length),1)[0]; spawnToken(p,pick,'tok_spiderling'); }
+    const eu=unitRefs(foe(p)); if(eu.length) damageUnit(eu[Math.floor(Math.random()*eu.length)],2);
+    const au=unitRefs(p); if(au.length){ const a=getUnit(au[Math.floor(Math.random()*au.length)]); if(a) a.atk+=1; }
+    log(`The Endspawn's death floods the circle — spiders swarm, essence gathers, and one grows hungrier.`, p.isAI?'foe':'you');
+  }
 }
 
+/* ---- campaign Boons: persistent per-side modifiers, shown on the playmat.
+   scenario.boons = { foe:[{title,text,turnStart?:{essence,mana,draw,hp}}], you:[…] }.
+   A boon with no turnStart is flavour-only (display only). ---- */
+function boonsFor(p){
+  const b = G && G.scenario && G.scenario.boons;
+  if(!b) return [];
+  return (p.isAI ? b.foe : b.you) || [];
+}
+/* one boon effect (shared by passive turn-start boons and active, paid boons).
+   fields: essence, mana, draw, hp (+ hpCap), dmgFoeUnit, buffAll:{atk,hp} */
+function applyBoonEffect(p, eff){
+  if(!eff) return;
+  if(eff.essence) gainInvoke(p, eff.essence);
+  if(eff.mana)    p.mana += eff.mana;
+  if(eff.draw)    drawCards(p, eff.draw);
+  if(eff.hp){ p.hp += eff.hp; if(eff.hpCap) p.hp = Math.min(p.hp, eff.hpCap); }
+  if(eff.dmgFoeUnit){ const refs=unitRefs(foe(p)); if(refs.length){ const r=refs[Math.floor(Math.random()*refs.length)]; log(`${p.name} smites ${getUnit(r).name} — ${eff.dmgFoeUnit} damage.`, p.isAI?'foe':'you'); damageUnit(r, eff.dmgFoeUnit); } }
+  if(eff.buffAll){ const da=eff.buffAll.atk||0, dh=eff.buffAll.hp||0; eachUnits(p,u=>{ u.atk+=da; u.hp+=dh; u.maxHp+=dh; }); }
+}
+function applyTurnStartBoons(p){
+  boonsFor(p).forEach(bn=>{ if(bn && bn.turnStart) applyBoonEffect(p, bn.turnStart); });
+}
+/* a static per-follower buff Boon (e.g. Justice's "followers are permanently +1/+1") */
+function applyFollowerBuff(p, u){
+  boonsFor(p).forEach(bn=>{ const fb=bn && bn.followerBuff; if(!fb) return; u.atk+=fb.atk||0; u.hp+=fb.hp||0; u.maxHp+=fb.hp||0; });
+}
+/* AI-side: fire each affordable active Boon once per turn (banked essence pays for it) */
+function activateBoons(p){
+  boonsFor(p).forEach(bn=>{
+    const a = bn && bn.active; if(!a || p.invoke < a.cost) return;
+    const worthHeal = a.hp && (!a.hpCap || p.hp < a.hpCap);
+    const worthBuff = a.buffAll && unitRefs(p).length>0;
+    if(!(worthHeal || worthBuff || a.essence || a.draw || a.dmgFoeUnit)) return;
+    p.invoke -= a.cost;
+    log(`${p.name} channels ${bn.title} (${a.cost} essence).`, p.isAI?'foe':'you');
+    applyBoonEffect(p, a);
+  });
+}
 function startTurn(){
   const p = active();
   if(G.turn===(G.first||0)) G.turnNo++;   // a new round begins when the first player's turn comes round
   p.maxMana = Math.min(MAX_MANA, p.maxMana+1);
   p.mana = p.maxMana;
   p.abilityUsed = false;
+  applyTurnStartBoons(p);   // campaign Boons: per-side turn-start modifiers
   /* the long duel: from turn 25, reality reasserts itself — the core
      decays at each turn start, harder every turn, bypassing the form */
   if(G.turnNo>=DECAY_START){
@@ -89,6 +142,7 @@ function startTurn(){
   /* ready units; terror and paralysis hold the stricken in place this turn */
   eachUnits(p,u=>{
     u.ready=true; u.sick=false;
+    if(u.grow) u.atk += u.grow;   // self-growing followers (Growth Spider) swell each turn they begin on the board
     if(u.terrified || u.paralysed>0) u.ready=false;
   });
   /* paralysis: the stricken take 1 damage at turn start and count down */
@@ -97,6 +151,32 @@ function startTurn(){
     const u=getUnit(ref);
     if(u && u.paralysed>0){ u.paralysed--; damageUnit(ref,1); }
   });
+  if(G.over) return;
+  /* Tainted Dreams: each stack bleeds 1 at turn start and draws a card for the caster when it wears off (or on death — see killUnit) */
+  unitRefs(p).forEach(ref=>{
+    if(G.over) return;
+    const u=getUnit(ref);
+    if(u && u.curses && u.curses.length){
+      damageUnit(ref, u.curses.length);                 // 1 per stack; a kill here draws the remaining stacks via killUnit
+      const still=getUnit(ref);
+      if(still && still.curses){
+        still.curses = still.curses.map(c=>c-1);
+        const expired = still.curses.filter(c=>c<=0).length;
+        still.curses = still.curses.filter(c=>c>0);
+        if(expired) drawCards(foe(p), expired);
+      }
+    }
+  });
+  if(p.coreCurses && p.coreCurses.length){
+    const n=p.coreCurses.length;
+    log(`Tainted Dreams gnaws at ${p.name}'s abstract — ${n} damage.`, p.isAI?'foe':'you');
+    damageFace(p,n);
+    p.coreCurses = p.coreCurses.map(c=>c-1);
+    const expired = p.coreCurses.filter(c=>c<=0).length;
+    p.coreCurses = p.coreCurses.filter(c=>c>0);
+    if(expired) drawCards(foe(p), expired);
+    if(p.hp<=0 && !G.over){ endGame(foe(p)); return; }
+  }
   if(G.over) return;
   /* communion: the completed circle channels — +1 essence per follower */
   if(diagramComplete(p)){
@@ -143,6 +223,7 @@ function startTurn(){
   if(G.over) return;
   drawCards(p,1);
   log(`— Turn ${G.turnNo}: ${p.name} (${p.mana} mana) —`, p.isAI?'foe':'you');
+  checkSenthsWatch();
   clearSelection(); renderAll();
   if(p.isAI) aiTurn(p);
 }
@@ -162,7 +243,8 @@ function playFollower(p, handIdx, nodeIdx){
   p.mana -= c.cost; p.hand.splice(handIdx,1);
   if(!c.apparition) p.used.push(cid);   /* apparitions never recycle: spent forever once played */
   const u = {cid, name:c.name, atk:c.atk, hp:c.hp, maxHp:c.hp, invoke:c.inv,
-             soloInv:c.soloInv||0, dr:c.dr||null, ready:false, sick:true, terrified:false, muted:false, paralysed:0};
+             soloInv:c.soloInv||0, dr:c.dr||null, grow:c.grow||0, ready:false, sick:true, terrified:false, muted:false, paralysed:0, curses:[]};
+  applyFollowerBuff(p, u);   // static Boon buffs (e.g. Justice's permanent +1/+1)
   p.board[nodeIdx]=u;
   if(c.lockNode && p.lockNode[cid]===undefined){ p.lockNode[cid]=nodeIdx; log(`${c.name} consecrates this seat — its kind may invoke only here.`,'sys'); }
   const fxKey = p.nodes[nodeIdx];
@@ -178,16 +260,29 @@ function castSpell(p, handIdx, targetRef){
   if(c.cost>p.mana) return false;
   p.mana -= c.cost; p.hand.splice(handIdx,1);
   if(!c.apparition) p.used.push(cid);   /* apparitions never recycle: spent forever once played */
-  const tgtTxt = targetRef && targetRef.zone!=='node' ? ` on ${getUnit(targetRef).name}` : '';
+  const tgtTxt = targetRef && targetRef.zone==='board' ? ` on ${getUnit(targetRef).name}` : (targetRef && targetRef.zone==='hero' ? ' on the enemy abstract' : '');
   log(`${p.name} cast${p.isAI?'s':''} ${c.name}${tgtTxt}.`, p.isAI?'foe':'you');
   if(c.apparition) log(`${c.name} fades from the cycle — an apparition is seen but once.`,'sys');
   resolveFx(c.fx,p,targetRef);
   renderAll(); return true;
 }
 
+/* Redaction / Amnesia: EVERY player shuffles up to n random cards from hand back into their deck */
+function shuffleHandBack(n){
+  G.players.forEach(pl=>{
+    let moved=0;
+    for(let k=0;k<n && pl.hand.length;k++){ const i=Math.floor(Math.random()*pl.hand.length); pl.deck.push(pl.hand.splice(i,1)[0]); moved++; }
+    if(moved){ shuffle(pl.deck); log(`${pl===G.players[0]?'You':pl.name} shuffle${pl.isAI?'s':''} ${moved} card${moved===1?'':'s'} back into the litany.`, pl.isAI?'foe':'you'); }
+  });
+}
 function resolveFx(fx,p,ref,self){
   const e = foe(p);
   switch(fx){
+    case 'shuffle2': shuffleHandBack(2); break;
+    case 'shuffle3': shuffleHandBack(3); break;
+    case 'summon4spiders': { for(let k=0;k<4;k++){ if(spawnToken(p,null,'tok_spider')==null) break; } break; }
+    case 'summonGargantuan': spawnToken(p,null,'tok_gargantuan'); break;
+    case 'webspin': { if(ref && ref.zone==='bond' && ref.a!==ref.b){ p.bonds=p.bonds||[]; p.bonds.push({a:ref.a,b:ref.b}); log('A web is spun — two nodes are bonded for the rest of the duel.','sys'); } break; }
     case 'whisper': { const refs=unitRefs(e); if(refs.length){ const r=refs[Math.floor(Math.random()*refs.length)]; const u=getUnit(r); u.atk=Math.max(0,u.atk-1); log(`${u.name} loses 1 Attack.`,'sys'); } break; }
     case 'heal2': healCore(p,2); break;
     case 'draw1': drawCards(p,1); break;
@@ -222,6 +317,11 @@ function resolveFx(fx,p,ref,self){
     case 'retribution': { for(let n=0;n<3;n++){ const refs=unitRefs(e); if(!refs.length) break; damageUnit(refs[Math.floor(Math.random()*refs.length)],1); } log('Retribution scatters among the enemy ranks.','sys'); break; }
     case 'tribunal': unitRefs(e).reverse().forEach(r=>damageUnit(r,1)); healFace(p,2); break;
     case 'paralyse': { const u=getUnit(ref); if(u){ u.paralysed=2; log(`${u.name} is Terrified for 2 turns — and bleeds 1 each turn.`,'sys'); } break; }
+    case 'curse': {
+      if(ref && ref.zone==='hero'){ const tp=G.players[ref.pi]; (tp.coreCurses=tp.coreCurses||[]).push(3); log(`${tp.name}'s abstract sinks into Tainted Dreams — it will bleed for 3 turns.`,'sys'); }
+      else if(ref){ const u=getUnit(ref); if(u){ (u.curses=u.curses||[]).push(3); log(`${u.name} sinks into Tainted Dreams — it will bleed for 3 turns.`,'sys'); } }
+      break;
+    }
     case 'chessMove': {
       /* 1. steal the follower on the enemy front node (index 0) if you have room */
       const front = e.board[0];
@@ -292,9 +392,17 @@ function gainInvoke(p,n){
 
 /* effective invoke: a solitary channeler (soloInv) inverts the rule — it
    channels only while UNLINKED, for its solo value; otherwise nothing. */
+/* Web-spinning bonds: nodes bonded to idx that currently hold a follower */
+function bondPartners(p, idx){
+  const out=[];
+  (p.bonds||[]).forEach(b=>{ if(b.a===idx) out.push(b.b); else if(b.b===idx) out.push(b.a); });
+  return out;
+}
+function bondInvokeBonus(p, idx){ let s=0; bondPartners(p,idx).forEach(i=>{ const u=p.board[i]; if(u) s+=u.invoke; }); return s; }
+function bondAtkBonus(p, idx){    let s=0; bondPartners(p,idx).forEach(i=>{ const u=p.board[i]; if(u) s+=u.atk;    }); return s; }
 function effInvoke(p,u,idx){
-  if(u.soloInv) return linkedAt(p,idx) ? 0 : (u.invoke + u.soloInv);
-  return u.invoke;
+  const base = u.soloInv ? (linkedAt(p,idx) ? 0 : (u.invoke + u.soloInv)) : u.invoke;
+  return base + bondInvokeBonus(p,idx);   // the web echoes the bonded node's follower
 }
 /* may this unit channel right now? muted blocks it; normal units need a
    link, solitary channelers need solitude. */
@@ -325,17 +433,18 @@ function invokeWith(p,ref){
 function attackWith(p, attRef, targetRef){
   const a=getUnit(attRef); if(!a||!a.ready) return;
   a.ready=false;
+  const dmg = a.atk + bondAtkBonus(p, attRef.idx);   // web echo: the bonded node's follower strikes the same target
   if(targetRef.zone==='hero'){
     const t=G.players[targetRef.pi];
     const tgt = t.abstractUnit ? t.abstractUnit.name : `${t.name}'s core`;
-    log(`${a.name} strikes ${tgt} for ${a.atk}.`, p.isAI?'foe':'you');
-    damageFace(t,a.atk);
+    log(`${a.name} strikes ${tgt} for ${dmg}.`, p.isAI?'foe':'you');
+    damageFace(t,dmg);
   } else {
     const d=getUnit(targetRef);
-    log(`${a.name} (${a.atk}) clashes with ${d.name} (${d.atk}).`, p.isAI?'foe':'you');
+    log(`${a.name} (${dmg}) clashes with ${d.name} (${d.atk}).`, p.isAI?'foe':'you');
     a.hp -= d.atk;
     floatNum(unitEl(attRef), -d.atk, true);
-    damageUnit(targetRef, a.atk);
+    damageUnit(targetRef, dmg);
     if(a.hp<=0) killUnit(attRef);
   }
   renderAll();
@@ -344,6 +453,17 @@ function attackWith(p, attRef, targetRef){
 function spawnSpider(p, nodeIdx){
   p.board[nodeIdx]={cid:'tok_spider',name:'Terror Spider',atk:1,hp:1,maxHp:1,invoke:0,dr:null,ready:false,sick:true,terrified:false};
 }
+/* place a TOKEN_DEFS token, sick, on nodeIdx (or the first empty node if that's taken) */
+function spawnToken(p, nodeIdx, tokId){
+  if(nodeIdx==null || nodeIdx<0 || nodeIdx>=p.board.length || p.board[nodeIdx]){
+    const empt=p.board.map((s,i)=>s?null:i).filter(i=>i!==null);
+    if(!empt.length) return null;
+    nodeIdx=empt[0];
+  }
+  const d=TOKEN_DEFS[tokId]||{name:'?',atk:1,hp:1,invoke:0,dr:null};
+  p.board[nodeIdx]={cid:tokId,name:d.name,atk:d.atk,hp:d.hp,maxHp:d.hp,invoke:d.invoke||0,soloInv:0,dr:d.dr||null,grow:0,ready:false,sick:true,terrified:false,muted:false,paralysed:0,curses:[]};
+  return nodeIdx;
+}
 
 /* ---- scenarios (campaign stages, events, and later the joiner's room) ----
    Build a follower from a card id or a known token id, for pre-placed boards. */
@@ -351,13 +471,17 @@ const TOKEN_DEFS = {
   tok_spider:  {name:'Terror Spider', atk:1, hp:1, invoke:0, dr:null},
   tok_gspider: {name:'Giant Spider',  atk:2, hp:2, invoke:1, dr:'dr_dmg1'},
   tok_prophet: {name:'Prophet',       atk:1, hp:1, invoke:1, dr:null},
-  tok_footnote:{name:'Footnote',      atk:1, hp:1, invoke:0, dr:null}
+  tok_footnote:{name:'Footnote',      atk:1, hp:1, invoke:0, dr:null},
+  tok_hellspawn:{name:'Hellspawn',    atk:4, hp:5, invoke:4, dr:'dr_hellspawn'},
+  tok_endspawn: {name:'Endspawn',     atk:2, hp:2, invoke:3, dr:'dr_endspawn'},
+  tok_spiderling:{name:'Spiderling',  atk:1, hp:1, invoke:1, dr:null},
+  tok_gargantuan:{name:'Gargantuan Spider', atk:5, hp:5, invoke:0, dr:null}
 };
 function scenarioUnit(cid){
   const c = CARDS[cid] || TOKEN_DEFS[cid] || {name:'?',atk:1,hp:1,invoke:0,dr:null};
   const atk=c.atk, hp=c.hp, inv=(c.inv!==undefined?c.inv:c.invoke);
-  return {cid, name:c.name, atk, hp, maxHp:hp, invoke:inv||0, soloInv:c.soloInv||0, dr:c.dr||null,
-          ready:false, sick:false, terrified:false, muted:false, paralysed:0};
+  return {cid, name:c.name, atk, hp, maxHp:hp, invoke:inv||0, soloInv:c.soloInv||0, dr:c.dr||null, grow:c.grow||0,
+          ready:false, sick:false, terrified:false, muted:false, paralysed:0, curses:[]};
 }
 /* apply a scenario's setup after standard init: pre-placed boards + stat tweaks.
    No-op for free play (no scenario / no setup). */
@@ -379,6 +503,17 @@ function applyScenario(scenario){
     if(typeof cfg.invoke==='number') p.invoke = cfg.invoke;
     if(typeof cfg.mana==='number'){  p.mana = cfg.mana; p.maxMana = Math.max(p.maxMana, cfg.mana); }
     if(typeof cfg.summonLock==='number') p.summonLockTurns = cfg.summonLock; // AI holds its form until this turn passes
+    if(typeof cfg.idleTurns==='number') p.idleTurns = cfg.idleTurns;         // AI does nothing on its first N turns (quiet lock)
+    if(cfg.summoned && !p.abstractUnit){                                     // start already manifested (free — no essence cost)
+      const a=ARCH[p.arch].abstract;
+      p.abstractUnit={name:a.name, hp:a.hp, maxHp:a.hp, isAbstract:true};
+      p.summonCount++; p.summonCost += SUMMON_STEP;
+    }
+    if(Array.isArray(cfg.revives)) p.revives = cfg.revives.slice();          // "final stand": on death, rise again at each listed HP
+    if(typeof cfg.distil==='number'){                                        // pre-distil the diagram (e.g. Knowledge's octagon -> pentagon); assumes an empty board
+      for(let k=0;k<cfg.distil && p.board.length>4;k++){ p.nodes.pop(); p.board.pop(); }
+      const n=p.board.length; p.angles = Array.from({length:n},(_,i)=> -90 + i*360/n);
+    }
     if(Array.isArray(cfg.cast)) cfg.cast.forEach(fx=>resolveFx(fx, p));      // free spell effects resolved for this side at game start
   }
 }
@@ -455,7 +590,71 @@ function useAbility(p){
   renderAll();
 }
 
+/* move n random cards from a player's hand into their spent litany */
+function discardRandom(p, n){
+  for(let k=0;k<n && p.hand.length;k++){ p.used.push(p.hand.splice(Math.floor(Math.random()*p.hand.length),1)[0]); }
+}
+/* resolve one "final stand" revive. rev is {hp, keep?, discard?, discardTo?} (or a bare hp number). */
+function reviveLoser(loser){
+  const rev = loser.revives.shift();
+  const hp = (typeof rev==='number') ? rev : rev.hp;
+  loser.hp = hp;
+  loser.abstractUnit = null;   // returns as an exposed core — no form
+  if(rev && typeof rev==='object'){
+    if(typeof rev.keep==='number'){                        // retain `keep` random followers; the rest disperse (no death-rattle)
+      const refs = unitRefs(loser);
+      if(refs.length > rev.keep){
+        const sh = refs.slice();
+        for(let i=sh.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [sh[i],sh[j]]=[sh[j],sh[i]]; }
+        sh.slice(rev.keep).forEach(r=>{ loser.board[r.idx]=null; });
+      }
+    }
+    if(rev.discard) discardRandom(loser, rev.discard);
+    if(typeof rev.discardTo==='number') discardRandom(loser, loser.hand.length - rev.discardTo);
+  }
+  return { hp, finalOne: loser.revives.length===0 };
+}
+/* "Senths is watching": when either core falls to 15 or less, the Mother descends onto the player's diagram (once). */
+function summonSenthsFor(p){
+  let idx = p.board.findIndex(s=>!s);                                   // an empty node, else overwrite a random follower
+  if(idx<0) idx = Math.floor(Math.random()*p.board.length);
+  const c = CARDS.f_ap_senths;
+  p.board[idx] = {cid:'f_ap_senths', name:c.name, atk:c.atk, hp:c.hp, maxHp:c.hp, invoke:c.inv, soloInv:0, dr:c.dr||null, grow:0, ready:false, sick:true, terrified:false, muted:false, paralysed:0, curses:[]};
+  log(`✦ ${c.name} answers the call — the Mother descends. ✦`,'sys');
+  renderAll();
+  if(typeof runRebirth==='function') runRebirth(p.isAI?'foe':'you', 'fear', 'Senths descends..');
+  /* the adversary answers: after a beat, it manifests its own form (no arrival effect) */
+  const opp = foe(p);
+  if(opp && !opp.abstractUnit){
+    setTimeout(()=>{
+      if(!G || G.over || opp!==foe(you()) || opp.abstractUnit) return;
+      const a = ARCH[opp.arch].abstract;
+      opp.abstractUnit = {name:a.name, hp:a.hp, maxHp:a.hp, isAbstract:true};
+      opp.summonCount++; opp.summonCost += SUMMON_STEP;
+      log(`✦ ${a.name} rises to meet her — not so fast. ✦`,'sys');
+      renderAll();
+      if(typeof runRebirth==='function') runRebirth(opp.isAI?'foe':'you', opp.arch, 'Not so fast..');
+    }, 2000);
+  }
+}
+function checkSenthsWatch(){
+  if(!G || G.over || G.senthsFired) return;
+  if(!boonsFor(you()).some(b=>b && b.senthsWatch)) return;
+  const low = pl => pl.hp>0 && pl.hp<=15;
+  if(low(you()) || low(enemy())){ G.senthsFired=true; summonSenthsFor(you()); }
+}
 function endGame(winner){
+  /* "final stand": if the loser has revives banked, it rises again instead of dying */
+  const loser = foe(winner);
+  if(loser && Array.isArray(loser.revives) && loser.revives.length){
+    const { hp, finalOne } = reviveLoser(loser);
+    const Name = loser.arch.charAt(0).toUpperCase()+loser.arch.slice(1);
+    const msg = finalOne ? `${Name} takes a final stand..` : `${Name} rises again..`;
+    log(`${loser.name} refuses to fall — it rises again with ${hp} HP!`,'sys');
+    if(typeof runRebirth==='function') runRebirth(loser.isAI?'foe':'you', loser.arch, msg);
+    renderAll();
+    return;
+  }
   G.over=true;
   const ov=document.getElementById('over-overlay');
   ov.classList.remove('hidden');

@@ -39,20 +39,12 @@ const CAMPAIGN = {
     games:[
       { id:'s1', label:'Stage 1 · A Familiar Foe', arch:'fear', foeArch:'knowledge',
         blurb:'Face Knowledge on even ground — though it has drawn a small boon from its studies.',
-        dialogue:[
-          { speaker:'KNOWLEDGE', text:'You cannot wield the power you\'re trying to unlock. Turn around now.' },
-          { speaker:'FEAR', text:'My spiders will be ecstatic to take over your library and consume your strength, unless you step aside.' },
-          { speaker:'KNOWLEDGE', text:'Let us measure your strength. Higher understanding guides me to victory!' }
-        ],
+        intro:'You\'re facing a studious Knowledge.',
         scenario:{ foeArch:'knowledge', label:'The Weaving Dark · Stage 1',
           boons:{ foe:[ { title:'Wellspring', text:'Gains 1 essence at the start of each turn.', turnStart:{ essence:1 } } ] } } },
       { id:'s2', label:'Stage 2 · The Hidden Pages', arch:'fear', foeArch:'knowledge', reward:'f_grow',
         blurb:'Knowledge returns, faster and slyer — and it keeps tearing the cards from your grasp.',
-        dialogue:[
-          { speaker:'KNOWLEDGE', text:'Hmph.. not bad. You possess some knowledge. No matter.' },
-          { speaker:'FEAR', text:'Final warning, get out of the way. The Apparition is mine.' },
-          { speaker:'KNOWLEDGE', text:'Forgive me, but after this you will be forgotten. Know unbecoming, little spider.' }
-        ],
+        intro:'You\'re facing a cunning Knowledge.',
         scenario:{ foeArch:'knowledge', label:'The Weaving Dark · Stage 2',
           foeDeck:['k_scribe','k_scribe','k_owl','k_owl','k_archiv','k_archiv','k_sage','k_sage','k_spark','k_spark','k_twin','k_twin','k_veil','k_veil','k_redact','k_redact','k_redact','k_amnes','k_amnes','k_amnes'],
           boons:{ foe:[
@@ -61,22 +53,12 @@ const CAMPAIGN = {
           ] } } },
       { id:'s3', label:'Stage 3 · The Caves Below', arch:'fear', foeArch:'justice',
         blurb:'Justice bars the road to the caves — and smites your swarm each turn.',
-        dialogue:[
-          { speaker:'FEAR', text:'I\'ve now learned where to find the Apparition. I\'ll need to transverse the caves under the hall first.' },
-          { speaker:'FEAR', text:'What\'s...' },
-          { speaker:'JUSTICE', text:'Abstracts shall not rely on this cheap trickery.' },
-          { speaker:'FEAR', text:'Ah, Justice. Ever _afraid_ of finding true power.' },
-          { speaker:'JUSTICE', text:'Apparitions hold unjust powers, and you should know this. Stop, before it\'s too late.' }
-        ],
+        intro:'You\'re facing a righteous Justice.',
         scenario:{ foeArch:'justice', label:'The Weaving Dark · Stage 3',
           boons:{ foe:[ { title:'Smite', text:'Deals 1 damage to a random enemy follower at the start of each turn.', turnStart:{ dmgFoeUnit:1 } } ] } } },
       { id:'s4', label:'Stage 4 · The Unyielding Hall', arch:'fear', foeArch:'justice', reward:'f_taint',
         blurb:'Justice makes its stand — mending and fortifying faster than you can strike it down.',
-        dialogue:[
-          { speaker:'JUSTICE', text:'Far enough, spider. This hall is where your crawl ends.' },
-          { speaker:'FEAR', text:'You bleed like all the rest. I will only bleed you faster than you can mend.' },
-          { speaker:'JUSTICE', text:'Mend? I am renewal itself. Strike me, and watch every wound close.' }
-        ],
+        intro:'You\'re facing an unyielding Justice.',
         scenario:{ foeArch:'justice', label:'The Weaving Dark · Stage 4',
           setup:{ foe:{ hp:40, summonLock:999 } },
           boons:{ foe:[
@@ -85,13 +67,7 @@ const CAMPAIGN = {
           ] } } },
       { id:'s5', label:'Stage 5 · The Final Stand', arch:'fear', foeArch:'justice',
         blurb:'Justice bars the last door — empowered, unbroken, and unwilling to stay dead.',
-        dialogue:[
-          { speaker:'FEAR', text:'I can feel the power emanate through these very walls.' },
-          { speaker:'FEAR', text:'It lies behind that door.' },
-          { speaker:'KNOWLEDGE', text:'And you shall never cross it.' },
-          { speaker:'JUSTICE', text:'...' },
-          { speaker:'JUSTICE', text:'Leave this to me, I\'m not done.' }
-        ],
+        intro:'You\'re facing an unbroken Justice.',
         scenario:{ foeArch:'justice', label:'The Weaving Dark · Stage 5',
           setup:{ foe:{ hp:20, invoke:6, summoned:true, summonLock:999, revives:[ { hp:10, keep:1, discard:2 }, { hp:5, keep:0, discardTo:1 } ] } },
           boons:{ foe:[
@@ -100,21 +76,13 @@ const CAMPAIGN = {
           ] } } },
       { id:'s6', label:'Stage 6 · The Mirror', arch:'fear', foeArch:'fear', reward:'f_web',
         blurb:'A reflection of yourself bars the way — a swarm that fights as you would, and worse.',
-        dialogue:[
-          { speaker:'KNOWLEDGE', text:'It\'s quite clear now that you won\'t stop. Very well then.' },
-          { speaker:'KNOWLEDGE', text:'See for yourself the suffering you cause.' },
-          { speaker:'FEAR', text:'...' }
-        ],
+        intro:'You\'re facing a familiar reflection.',
         scenario:{ foeArch:'fear', label:'The Weaving Dark · Stage 6',
           foeDeck:['f_swarm','f_swarm','f_gargant','f_gargant','k_distil','k_distil','f_shadow','f_shadow','f_whisper','f_whisper','f_acolyte','f_acolyte','f_hound','f_hound','f_wraith','f_wraith','f_rite','f_chill','f_terror','f_wave'],
           boons:{ foe:[ { title:'Illusion', text:'Must remember.. this is not you...' } ] } } },
       { id:'s7', label:'Stage 7 · The Unlocked Mind', arch:'fear', foeArch:'knowledge',
         blurb:'Knowledge throws off its limits — manifested, fortified, and its diagram already refined.',
-        dialogue:[
-          { speaker:'FEAR', text:'Enough of these tricks.' },
-          { speaker:'FEAR', text:'It\'s within reach now. I cannot be stopped.' },
-          { speaker:'KNOWLEDGE', text:'You leave me no choice.' }
-        ],
+        intro:'You\'re facing an enlightened Knowledge.',
         scenario:{ foeArch:'knowledge', label:'The Weaving Dark · Stage 7',
           setup:{ foe:{ hp:40, summoned:true, distil:3, idleTurns:3 } },
           boons:{ foe:[
@@ -123,14 +91,7 @@ const CAMPAIGN = {
           ] } } },
       { id:'s8', label:'Stage 8 · The Weaving Dark', arch:'fear', foeArch:'justice', reward:'f_ap_senths',
         blurb:'Justice and Knowledge set aside their war to end yours. Raise the Mother, and prevail.',
-        dialogue:[
-          { speaker:'FEAR', text:'Rise, Mother of spiders.' },
-          { speaker:'Senths', text:'At your command..', arch:'fear' },
-          { speaker:'JUSTICE', text:'For righteousness.' },
-          { speaker:'KNOWLEDGE', text:'For wisdom.' },
-          { speaker:'JUSTICE', text:'We shall defeat you, Senths.' },
-          { speaker:'KNOWLEDGE', text:'We shall defeat you, Senths.' }
-        ],
+        intro:'You\'re facing Justice and Knowledge, united.',
         scenario:{ foeArch:'justice', label:'The Weaving Dark · Stage 8',
           foeDeck:['k_scribe','k_scribe','k_archiv','k_archiv','k_twin','k_twin','k_study','k_study','k_refute','k_surge','j_paladin','j_paladin','j_arbiter','j_arbiter','j_brute','j_brute','j_verdict','j_verdict','j_tribunal','j_chess'],
           boons:{
@@ -140,6 +101,82 @@ const CAMPAIGN = {
             ],
             you:[
               { title:'Senths is watching', text:'When either core falls to 15 HP or less, the Mother descends to your side.', arch:'fear', senthsWatch:true }
+            ]
+          } } }
+    ]
+  },
+  knowledge: {
+    id:'knowledge', name:'The Ancient Discovery', pickDeck:true, requires:'welcome',
+    blurb:'Take up Knowledge and seek what the spiral has long kept buried. The others would rather it stayed that way.',
+    games:[
+      { id:'s1', label:'Stage 1 · A Test of Strength', arch:'knowledge', foeArch:'justice',
+        blurb:'Justice meets you with a Champion of Light already standing guard.',
+        intro:'You\'re facing Justice and its champion.',
+        scenario:{ foeArch:'justice', label:'The Ancient Discovery · Stage 1',
+          setup:{ foe:{ board:[ { cid:'j_champion', node:0 } ] } } } },
+      { id:'s2', label:'Stage 2 · The Sentence', arch:'knowledge', foeArch:'justice', reward:'k_borrower',
+        blurb:'Justice returns more watchful than before, and it has begun passing sentences.',
+        intro:'You\'re facing a watchful Justice.',
+        scenario:{ foeArch:'justice', label:'The Ancient Discovery · Stage 2',
+          foeDeck:['j_herald','j_herald','j_oath','j_paladin','j_paladin','j_magis','j_magis','j_arbiter','j_brute','j_plea','j_plea','j_verdict','j_verdict','j_tribunal','j_tribunal','j_bless','j_bless','j_sentinel','j_sentinel','j_sentinel'],
+          boons:{ foe:[
+            { title:'Vigilance', text:'Justice keeps a few tricks up its sleeve…' },
+            { title:'Execution', text:'Pay 4 essence: sentence an enemy follower. It dies when Justice\'s next turn begins.', active:{ cost:4, execute:true } }
+          ] } } },
+      { id:'s3', label:'Stage 3 · The Nest', arch:'knowledge', foeArch:'fear',
+        blurb:'Beyond the hall, Fear\'s brood has nested, and it keeps on coming.',
+        intro:'You\'re facing a brooding Fear.',
+        scenario:{ foeArch:'fear', label:'The Ancient Discovery · Stage 3',
+          boons:{ foe:[
+            { title:'The Brood', text:'At the start of each turn, Fear summons a 0/1 Spider Amalgamation.', turnSpawn:'tok_amalgam' },
+            { title:'Coalesce', text:'Pay essence: every Amalgamation from now on gains +1/+1. Costs 2 more each time.', active:{ cost:3, costStep:2, spawnBonus:1 } }
+          ] } } },
+      { id:'s4', label:'Stage 4 · The Rising Swarm', arch:'knowledge', foeArch:'fear', reward:'k_mirror',
+        blurb:'Down here Fear takes form almost at will, and its swarm fills every gap you leave.',
+        intro:'You\'re facing a restless Fear.',
+        scenario:{ foeArch:'fear', label:'The Ancient Discovery · Stage 4',
+          setup:{ foe:{ summonCost:3, board:[ { cid:'tok_amalgam', node:1 }, { cid:'tok_amalgam', node:4 } ] } },
+          boons:{ foe:[ { title:'Restless Form', text:'Fear takes form for just 3 essence. Each resummon costs 5 more.' } ] } } },
+      { id:'s5', label:'Stage 5 · The Refined Mind', arch:'knowledge', foeArch:'knowledge',
+        blurb:'A mirror of your own mind, already distilled to its purest form.',
+        intro:'You\'re facing a refined Knowledge.',
+        scenario:{ foeArch:'knowledge', label:'The Ancient Discovery · Stage 5',
+          foeDeck:['k_spark','k_spark','k_spark','k_spark','k_spark','k_surge','k_surge','k_surge','k_surge','k_surge','k_refute','k_refute','k_refute','k_refute','k_lore','k_lore','k_archiv','k_archiv','k_scribe','k_scribe'],
+          setup:{ foe:{ distil:4, hp:40 } } } },
+      { id:'s6', label:'Stage 6 · The Shell', arch:'knowledge', foeArch:'fear', reward:'k_illusion',
+        blurb:'A brittle core hides behind a form that returns every time you break it.',
+        intro:'You\'re facing a shielded Fear.',
+        scenario:{ foeArch:'fear', label:'The Ancient Discovery · Stage 6',
+          foeDeck:['f_shadow','f_shadow','f_whisper','f_whisper','f_acolyte','f_acolyte','f_hound','f_hound','f_wraith','f_wraith','f_stalker','f_stalker','f_terror','f_wave','f_wave','f_hysteria','f_hysteria','f_web0','f_web0','f_web0'],
+          setup:{ foe:{ hp:15, summonCost:1, summonStep:0, noArrival:true, noTerrify:true } },
+          boons:{ foe:[
+            { title:'The Shell', text:'Fear\'s form returns for 1 essence, every time. It arrives alone, and its aura no longer Terrifies.' },
+            { title:'Hidden Depths', text:'Gains 1 essence at the start of each turn. It keeps other secrets, too…', turnStart:{ essence:1 } }
+          ] } } },
+      { id:'s7', label:'Stage 7 · The Honour Guard', arch:'knowledge', foeArch:'justice',
+        blurb:'Justice gathers no essence here. Its form arrives on a countdown, behind a wall of guards.',
+        intro:'You\'re facing a guarded Justice.',
+        scenario:{ foeArch:'justice', label:'The Ancient Discovery · Stage 7',
+          foeDeck:['j_herald','j_herald','j_vindic','j_vindic','j_oath','j_oath','j_paladin','j_paladin','j_magis','j_magis','j_arbiter','j_brute','j_bless','j_bless','j_guard','j_guard','j_verdict','j_verdict','j_tribunal','j_tribunal'],
+          setup:{ foe:{ noEssence:true, formTimer:4, guardedForm:true, idleTurns:3, board:[ { cid:'j_guard', node:0 }, { cid:'j_guard', node:1 }, { cid:'j_guard', node:2 } ] } },
+          boons:{ foe:[
+            { title:'The Appointed Hour', text:'Justice gathers no essence. Its form arrives by itself every 4 turns, and the count restarts each time you break it.', formTimer:true },
+            { title:'Honour Guard', text:'While Justice has a follower, its form takes no damage.' }
+          ] } } },
+      { id:'s8', label:'Stage 8 · The Ancient Discovery', arch:'knowledge', foeArch:'fear', reward:'k_ap_arcana',
+        blurb:'Fear and Justice set aside their quarrel to bury what you have found. Let the Arcana answer.',
+        intro:'You\'re facing Fear and Justice, united.',
+        scenario:{ foeArch:'fear', label:'The Ancient Discovery · Stage 8',
+          foeDeck:['f_whisper','f_whisper','f_acolyte','f_acolyte','f_hound','f_hound','f_wraith','f_wraith','f_stalker','f_wave','j_paladin','j_paladin','j_arbiter','j_arbiter','j_brute','j_magis','j_verdict','j_verdict','j_tribunal','j_chess'],
+          setup:{ you:{ summonStep:0 } },
+          boons:{
+            foe:[
+              { title:'For dread', text:'Each turn, a Spider Amalgamation crawls into its circle. With no node free, its followers absorb one to take its place.', arch:'fear', turnSpawn:'tok_amalgam', absorb:'tok_amalgam' },
+              { title:'For order', text:'Pay 4 essence: sentence an enemy follower. It dies when this foe\'s next turn begins.', arch:'justice', active:{ cost:4, execute:true } }
+            ],
+            you:[
+              { title:'The Arcana stirs', text:'When either core falls to 15 HP or less, Ancient Arcana comes to your hand, free to cast.', arch:'knowledge', arcanaWatch:true },
+              { title:'Unbound Form', text:'Your form\'s price does not rise in this battle.', arch:'knowledge' }
             ]
           } } }
     ]

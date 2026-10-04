@@ -172,6 +172,7 @@ button{font-family:var(--body);cursor:pointer}
 .hero-strip{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:8px 14px}
 .hero-strip .who{font-family:var(--display);font-weight:700;letter-spacing:.14em;font-size:15px;color:var(--accent)}
 .hero-strip .tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.hero-strip .mirror-tag{color:var(--knowledge);border:1px solid var(--knowledge);border-radius:8px;padding:0 6px;letter-spacing:.1em;cursor:help}
 .stat{display:flex;align-items:baseline;gap:5px;font-size:15px}
 .stat b{font-size:19px;font-family:var(--display)}
 .stat.mana b{color:var(--mana)} .stat.inv b{color:var(--invoke)}
@@ -263,6 +264,8 @@ button{font-family:var(--body);cursor:pointer}
 }
 .centre.targetable{outline:2px solid var(--hp);outline-offset:4px;border-radius:8px;cursor:crosshair;animation:target-throb 1.1s infinite}
 .centre.selected{outline:2px solid var(--text);outline-offset:4px;border-radius:8px}
+/* a manifested form shudders when struck (same motion as its arrival). Must stay after .centre.targetable so it wins while the form is being targeted. */
+.centre.hit{animation:ignite 1s ease}
 @keyframes ignite{
   0%{filter:brightness(3.4) blur(3px);transform:translate(-50%,-50%) scale(1.2)}
   45%{filter:brightness(1.6) blur(0);transform:translate(-50%,-50%) scale(.96)}
@@ -403,4 +406,20 @@ button{font-family:var(--body);cursor:pointer}
 .unit .uterr{position:absolute;top:-8px;left:-6px;background:var(--surface);border:1px solid var(--hp);color:var(--hp);font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px}
 .unit .upar{position:absolute;top:-8px;left:-6px;background:var(--surface);border:1px solid var(--mana);color:var(--mana);font-size:11px;font-weight:700;padding:0 5px;border-radius:8px}
 .unit .ucurse{position:absolute;bottom:-8px;left:-6px;background:var(--surface);border:1px solid var(--fear);color:var(--fear);font-size:9px;font-weight:700;padding:0 4px;border-radius:8px}
+/* Time Borrower: a follower hidden beneath (badge) + drop-target outline while dragging a Borrower */
+.unit .uborrow{position:absolute;bottom:-8px;right:-6px;background:var(--surface);border:1px solid var(--knowledge);color:var(--knowledge);font-size:10px;font-weight:700;padding:0 4px;border-radius:8px}
+.unit.borrow-target{outline:2px dashed var(--knowledge);outline-offset:2px}
+/* Ancient Arcana: wish picker, and nodes it has upgraded */
+.wish-picker h2{color:var(--accent)}
+.wish-picker .wish-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.wish-picker .wish-opt{width:100%}
+.wish-picker .wish-opt:disabled{opacity:.4;cursor:not-allowed}
+.node.upgraded .dot{box-shadow:0 0 9px 1px var(--accent)}
+/* Ward: the first enemy spell that targets this follower is undone */
+.unit .uward{position:absolute;left:-9px;top:50%;transform:translateY(-50%);background:var(--surface);border:1px solid var(--invoke);color:var(--invoke);font-size:10px;font-weight:700;line-height:1.3;padding:0 4px;border-radius:8px}
+/* Dimensional Illusion: turns left before it vanishes */
+.unit .uvanish{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--knowledge);color:var(--knowledge);font-size:10px;font-weight:700;line-height:1.25;padding:0 5px;border-radius:8px;white-space:nowrap}
+/* Execution: a sentenced follower (dies at the executor's next turn start) */
+.unit .udoom{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--justice);color:var(--justice);font-size:11px;font-weight:700;line-height:1.25;padding:0 5px;border-radius:8px}
+.node.drag-over .unit.borrow-target{outline-style:solid;box-shadow:0 0 16px -4px var(--knowledge)}
 .unit.terrified{opacity:.7}

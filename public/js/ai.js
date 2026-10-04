@@ -22,7 +22,7 @@ async function aiTurn(p){
     const playable = p.hand.map((cid,i)=>({cid,i,c:CARDS[cid]}))
       .filter(x=>x.c.cost<=p.mana)
       .filter(x=>{
-        if(x.c.t==='f') return p.board.some(s=>!s);
+        if(x.c.t==='f') return canPlayFollower(p,x.c);
         return aiSpellOk(p,h,x.c);
       })
       .sort((a,b)=>b.c.cost-a.c.cost);
@@ -77,6 +77,10 @@ function aiSpellOk(p,h,c){
     case 'massHysteria': return eUnits.length>=2;
     case 'paralyse': return eUnits.length>0;
     case 'chessMove': return eUnits.length>0;
+    case 'webspin': return (p.bonds||[]).length<3 && !!aiBondPair(p);   // needs two followers not already bonded together; stops at three bonds
+    case 'arcana': return !((p.summonCount||0)>=2 && p.abstractUnit && p.abstractUnit.hp>=p.abstractUnit.maxHp);   // pointless only when its form is already whole
+    case 'illusion': return nodesRemoved(p)>0 && p.board.some(s=>!s) && illusionSize(p,'k_illusion')>=4;   // only once it would be a real body
+    case 'mirror': return eUnits.some(r=>getUnit(r).atk>0);   // only worth raising against followers that can attack
     case 'aoe2': return eUnits.length>=2;
     case 'tribunal': return eUnits.length>=2 || p.hp<=20;
     case 'bless': return unitRefs(p).length>0;
@@ -97,10 +101,18 @@ function aiSpellOk(p,h,c){
   }
 }
 
+/* Web-spinning: bond the nodes of its two strongest followers that are not already bonded to each other */
+function aiBondPair(p){
+  const own=unitRefs(p).sort((a,b)=>getUnit(b).atk-getUnit(a).atk);
+  const bonded=(a,b)=>(p.bonds||[]).some(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+  for(let i=0;i<own.length;i++) for(let j=i+1;j<own.length;j++) if(!bonded(own[i].idx,own[j].idx)) return {pi:G.players.indexOf(p),zone:'bond',a:own[i].idx,b:own[j].idx};
+  return null;
+}
 function aiSpellTarget(p,h,c){
   if(!c.target) return null;
-  if(c.target==='emptyNode'){
-    /* dissolve the empty node that best joins occupied neighbours */
+  if(c.target==='bondNodes') return aiBondPair(p);
+  if(c.target==='emptyNode' || c.target==='summonNode'){
+    /* the empty node that best joins occupied neighbours (to dissolve, or to summon onto) */
     const n=p.board.length; let best=null,bs=-1;
     for(let i=0;i<n;i++){
       if(p.board[i]) continue;
@@ -126,7 +138,14 @@ function aiSpellTarget(p,h,c){
 
 /* node choice: balance the node bonus against forging links */
 function aiPickNode(p,c){
-  const empty=p.board.map((s,i)=>s?null:i).filter(i=>i!==null);
+  /* Time Borrower: hide the most damaged follower (ties: the lower-Health one) */
+  if(c.replace){
+    const own=unitRefs(p).map(r=>({i:r.idx,u:getUnit(r)}));
+    own.sort((a,b)=>((b.u.maxHp-b.u.hp)-(a.u.maxHp-a.u.hp)) || (a.u.hp-b.u.hp));
+    return own.length?own[0].i:0;
+  }
+  let empty=p.board.map((s,i)=>s?null:i).filter(i=>i!==null);
+  if(!empty.length) empty=absorbNodes(p);   // no node free: absorb one of its own tokens instead (scenario Boon)
   const order=['draw1','hp3','hp2','inv1','invHeal','mana1','dmgHero1','healHero2','atk1','atk2'];
   const fx=i=>ARCH[p.arch].nodes[i];
   let best=empty[0], bestScore=-99;
@@ -150,9 +169,10 @@ function aiActUnit(p,h,ref,u){
     .reduce((s,x)=>s+x.atk,0);
   /* lethal? the face pool is form HP + core HP (approximate) */
   const facePool = (h.abstractUnit?h.abstractUnit.hp:0) + h.hp;
-  if(totalReadyAtk>=facePool && u.atk>0){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
+  const faceOpen = !formGuarded(h);   // a guarded form cannot be attacked while its owner has followers
+  if(faceOpen && totalReadyAtk>=facePool && u.atk>0){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
   /* enemy form up? batter it down */
-  if(h.abstractUnit && u.atk>=2){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
+  if(faceOpen && h.abstractUnit && u.atk>=2){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
   /* favourable trade */
   const kills=eUnits.filter(r=>{const d=getUnit(r);return d.hp<=u.atk;})
                     .sort((a,b)=>getUnit(b).atk-getUnit(a).atk);
@@ -162,7 +182,8 @@ function aiActUnit(p,h,ref,u){
   if(wantsEssence && canChannel(p,u,ref.idx)){ invokeWith(p,ref); return; }
   /* big enemy threatening? trade into it */
   if(eUnits.length && getUnit(eUnits[0]).atk>=4 && u.atk>=3){ attackWith(p,ref,eUnits.sort((a,b)=>getUnit(b).atk-getUnit(a).atk)[0]); return; }
-  if(u.atk>0){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
+  if(u.atk>0 && faceOpen){ attackWith(p,ref,{pi:hi,zone:'hero'}); return; }
+  if(u.atk>0 && eUnits.length){ attackWith(p,ref,eUnits.sort((a,b)=>getUnit(a).hp-getUnit(b).hp)[0]); return; }   // form guarded: clear its weakest guard
   /* zero-attack unit with nothing to channel: hold the node */
   u.ready=false;
 }

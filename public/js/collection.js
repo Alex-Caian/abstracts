@@ -51,7 +51,8 @@ const CARD_HELP = {
   k_owl:     'A devoted invoker.',
   k_archiv:  'I\'m trying to keep track of everything...',
   k_sage:    'Through communion we\'ll achieve Unity.',
-  k_lore:    'Once upon a.. wait, wrong line.'
+  k_lore:    'Once upon a.. wait, wrong line.',
+  k_borrower:'Quick, here. Hide in a different realm whilst I think of a good excuse..'
 };
 function cardExplanations(cid){
   const out = [];

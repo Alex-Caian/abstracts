@@ -29,6 +29,8 @@ function makePlayer(archKey, name, isAI, deckOverride){
     revives:[],             // "final stand" HP values it rises again with (scenario-set)
     bonds:[],               // Web-spinning: {a,b} node-index pairs, linked + echoing for the game
     idleTurns:0,            // scenario "quiet lock": AI passes its first N turns
+    startNodes:a.angles.length, // the Abstract's full diagram size; nodes removed = startNodes - board.length (never hardcode 8)
+    spellsSeen:[],          // different spells cast this game, by card id (Dimensional Illusion's size)
     abstractUnit:null       // the manifested form: {name,hp,maxHp} — HP only
   };
 }

@@ -48,6 +48,34 @@ function buildBoards(){
     `${a.abstract.onSummonTxt}<br>${a.abstract.auraTxt}<br>`+
     `<b>${ab.name}</b> (${ab.cost} invoke, once per turn) — ${ab.txt}`;
 }
+/* Ancient Arcana's wish: a small modal with one button per option. onPick(key) on a choice, onPick(null) on cancel. */
+function showWishPicker(opts, onPick){
+  const old=document.getElementById('wish-picker'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.className='overlay wish-picker arch-knowledge'; ov.id='wish-picker';
+  ov.innerHTML=`<div class="box"><h2>MAKE A WISH</h2><p>Choose one.</p><div class="wish-opts">`+
+    opts.map(o=>`<button class="btn wish-opt" data-wish="${o.key}" ${o.disabled?'disabled':''}>${o.label}</button>`).join('')+
+    `</div><button class="btn" id="wish-cancel">Cancel</button></div>`;
+  const esc=e=>{ if(e.key==='Escape'){ e.stopPropagation(); done(null); } };
+  function done(w){ ov.remove(); document.removeEventListener('keydown',esc,true); onPick(w); }
+  ov.addEventListener('click',e=>{
+    const b=e.target.closest('.wish-opt');
+    if(b){ if(!b.disabled) done(b.dataset.wish); return; }
+    if(e.target===ov || e.target.id==='wish-cancel') done(null);
+  });
+  document.addEventListener('keydown',esc,true);
+  document.body.appendChild(ov);
+}
+/* a one-shot flourish on a centre: add the class, then take it off again once it has played.
+   Left on, the animation replays every time another class (e.g. the red targeting outline)
+   briefly changes the centre's animation and is then cleared. */
+const centreFxToken = {};
+function playCentreFx(side, cls, ms){
+  const cEl=document.querySelector(`#board-${side} .centre`); if(!cEl) return;
+  const key=side+':'+cls, token=(centreFxToken[key]||0)+1; centreFxToken[key]=token;
+  cEl.classList.remove(cls); void cEl.offsetWidth; cEl.classList.add(cls);
+  setTimeout(()=>{ if(centreFxToken[key]!==token) return;   // a newer play of the same flourish owns the class now
+    const el=document.querySelector(`#board-${side} .centre`); if(el) el.classList.remove(cls); }, ms);
+}
 /* grand "rebirth" flourish when a foe rises again (final-stand revives) */
 function runRebirth(side, arch, msg){
   const css=(ARCH[arch]||{}).css||'';
@@ -76,9 +104,12 @@ function renderBoons(side,p){
   if(!list.length){ if(rail) rail.remove(); return; }
   if(!rail){ rail=document.createElement('div'); rail.className='boons-rail'; wrap.appendChild(rail); }
   rail.innerHTML=list.map(bn=>{
-    const cost = bn.active ? `<div class="boon-cost">Active · ${bn.active.cost}✦</div>` : '';
+    const cost = bn.active ? `<div class="boon-cost">Active · ${typeof boonCost==='function'?boonCost(p,bn):bn.active.cost}✦</div>` : '';
+    const td = bn.turnSpawn && TOKEN_DEFS[bn.turnSpawn], sb = p.spawnBonus||0;   // live stats of the per-turn spawn (Coalesce stacks)
+    const spawn = td ? `<div class="boon-cost">Now spawning ${td.atk+sb}/${td.hp+sb}</div>` : '';
+    const timer = (bn.formTimer && p.formTimer) ? `<div class="boon-cost">${p.abstractUnit ? 'Manifested' : `Manifests in ${p.formTimer.left} turn${p.formTimer.left===1?'':'s'}`}</div>` : '';   // live scenario countdown
     const acc = bn.arch && ARCH[bn.arch] ? ARCH[bn.arch].css : '';   // per-boon colour override
-    return `<div class="boon ${bn.active?'boon-active':''} ${acc}"><div class="boon-title">${escapeHtml(bn.title||'Boon')}</div><div class="boon-text">${escapeHtml(bn.text||'')}</div>${cost}</div>`;
+    return `<div class="boon ${bn.active?'boon-active':''} ${acc}"><div class="boon-title">${escapeHtml(bn.title||'Boon')}</div><div class="boon-text">${escapeHtml(bn.text||'')}</div>${spawn}${timer}${cost}</div>`;
   }).join('');
 }
 /* the opponent's concealed hand — face-down backs, one per held card */
@@ -91,7 +122,7 @@ function renderFoeHand(){
 /* HP now lives at the centre — the strip carries resources only */
 function renderStrip(side,p){
   const el=document.getElementById('strip-'+side);
-  el.innerHTML=`<span class="who">${ARCH[p.arch].name}</span><span class="tag">${p.name}</span>
+  el.innerHTML=`<span class="who">${ARCH[p.arch].name}</span><span class="tag">${p.name}</span>${p.mirror?'<span class="tag mirror-tag" title="Mirror Display: until this side\'s next turn, any follower that attacks it also takes its own Attack.">Mirror Display</span>':''}
     <span class="stat mana"><b>${p.mana}/${p.maxMana}</b><span class="lbl">Mana</span></span>
     <span class="stat inv"><b>${p.invoke}</b><span class="lbl">Essence</span></span>
     <span class="handcount">${p.isAI? p.hand.length+' cards in hand · ':''}${p.deck.length} in deck</span>`;
@@ -109,6 +140,7 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.cid==='tok_hellspawn') lines.push(`<b>On death: summon a 2/2 Endspawn (invoke 3).</b>`);
   if(u.cid==='tok_endspawn') lines.push(`<b>On death: gain 4 essence, summon 3 Spiderlings, deal 2 damage to a random enemy, and a random ally gains +1 Attack.</b>`);
   if(u.cid==='tok_spiderling') lines.push(`<b>Spawn of the Mother.</b>`);
+  if(u.cid==='tok_amalgam') lines.push(`<b>Many small hungers, stitched into one.</b>`);
   const eInv = effInvoke(owner,u,nodeIdx);
   if(u.soloInv){
     if(eInv>0) lines.push(`Invokes for <b>${eInv}</b> essence while <b>alone</b>.`);
@@ -128,8 +160,12 @@ function unitTipHtml(u, owner, nodeIdx){
   if(u.curses && u.curses.length) lines.push(`<b>Tainted Dreams ×${u.curses.length}</b> — takes ${u.curses.length} damage at the start of each of its turns; the caster draws a card for each stack when it wears off or this dies.`);
   { const bA=(typeof bondAtkBonus==='function')?bondAtkBonus(owner,nodeIdx):0, bI=(typeof bondInvokeBonus==='function')?bondInvokeBonus(owner,nodeIdx):0;
     if(bA||bI) lines.push(`<b>Bonded</b> — the web echoes the partner node: +${bA} Attack and +${bI} invoke when it acts.`); }
+  if(u.doomBy!=null){ const ex=G.players[u.doomBy]; lines.push(`<b>Sentenced</b> — it will be executed when ${ex===owner?'your':(ex?ARCH[ex.arch].name:'the enemy')+"'s"} next turn begins.`); }
+  if(u.ward) lines.push(`<b>Warded</b>: the first enemy spell that targets it is undone.`);
+  if(u.vanish) lines.push(u.vanishFresh ? `<b>Illusion</b>: fights for ${u.vanish} of ${owner.isAI?'its':'your'} turn${u.vanish===1?'':'s'}, then vanishes.` : `<b>Illusion</b>: ${u.vanish} of ${owner.isAI?'its':'your'} turn${u.vanish===1?'':'s'} left, then it vanishes.`);
+  if(u.borrowed) lines.push(`<b>Hiding ${u.borrowed.name}</b> (${u.borrowed.atk}/${u.borrowed.hp}) — it returns when this dies, gaining this follower's Attack and Health.`);
   if(u.sick) lines.push(`Resting — can act next turn.`);
-  lines.push(`<span class="tip-dim">Played on: ${NODE_FX[owner.nodes[nodeIdx]].txt}</span>`);
+  lines.push(`<span class="tip-dim">Played on: ${nodeText(owner,nodeIdx)}</span>`);
   return lines.map(l=>`<div>${l}</div>`).join('');
 }
 /* tooltip content for an Abstract centre (yours or theirs) */
@@ -139,10 +175,12 @@ function centreTipHtml(p){
   if(p.abstractUnit)
     lines.push(`<b>Manifested</b> — ${p.abstractUnit.hp}/${p.abstractUnit.maxHp} HP, shielding the core (${p.hp} HP) beneath.`);
   else
-    lines.push(`<b>Exposed core</b> — ${p.hp}/${START_HP} HP. ${p.summonCount>0?'Re-summon':'Summon'} at ${p.summonCost} essence (has ${p.invoke}).`);
+    lines.push(`<b>Exposed core</b> — ${p.hp}/${START_HP} HP. ${p.formTimer ? `Takes form in ${p.formTimer.left} turn${p.formTimer.left===1?'':'s'}.` : `${p.summonCount>0?'Re-summon':'Summon'} at ${p.summonCost} essence (has ${p.invoke}).`}`);
+  if(p.guardedForm) lines.push(`<b>Guarded</b>: its form takes no damage while it has a follower.`);
+  if(p.mirror) lines.push(`<b>Mirror Display</b>: until ${p.isAI?'its':'your'} next turn, any follower that attacks ${p.isAI?'it':'you'} also takes damage equal to its Attack.`);
   if(diagramComplete(p)) lines.push(`<b>In communion</b> — the complete circle channels +${p.board.length} essence at the start of ${p.isAI?'its':'your'} turn.`);
-  lines.push(`<b>Arrival:</b> ${a.onSummonTxt.replace('On arrival: ','')}`);
-  lines.push(`<b>Aura:</b> ${a.auraTxt.replace('Aura: ','')}`);
+  lines.push(`<b>Arrival:</b> ${p.noArrival ? 'None. This form arrives alone.' : a.onSummonTxt.replace('On arrival: ','')}`);
+  lines.push(`<b>Aura:</b> ${(p.noTerrify && p.arch==='fear') ? 'the enemy suffers 2 damage.' : a.auraTxt.replace('Aura: ','')}`);
   lines.push(`<b>${ab.name}</b> (${ab.cost} invoke, once per turn): ${ab.txt}`);
   return lines.map(l=>`<div>${l}</div>`).join('');
 }
@@ -152,6 +190,7 @@ function renderBoard(side,p){
   board.querySelectorAll('.node').forEach(node=>{
     const i=+node.dataset.idx, u=p.board[i];
     node.classList.remove('playable','drag-over','empty');
+    node.classList.toggle('upgraded', nodeExtras(p,i).length>0);   // Ancient Arcana gave this node an extra bonus
     if(u){
       const eInv = effInvoke(p,u,i);
       const canCh = canChannel(p,u,i);
@@ -160,6 +199,10 @@ function renderBoard(side,p){
         ${eInv>0?`<div class="uinv ${canCh?'':'dim'}">${eInv}</div>`:''}
         ${u.paralysed>0?`<div class="upar">↯</div>`:(u.terrified?`<div class="uterr">✕</div>`:(u.sick?`<div class="usick">zZ</div>`:''))}
         ${u.curses&&u.curses.length?`<div class="ucurse">☠${u.curses.length}</div>`:''}
+        ${u.borrowed?`<div class="uborrow">⧗</div>`:''}
+        ${u.doomBy!=null?`<div class="udoom">†</div>`:''}
+        ${u.ward?`<div class="uward">◈</div>`:''}
+        ${u.vanish?`<div class="uvanish">⧖${u.vanish}</div>`:''}
         <div class="uname">${u.name}</div>
         <div class="ustats"><span class="uatk">${u.atk}</span><span class="uhp">${u.hp}</span></div>
         <div class="hover-tip">${unitTipHtml(u,p,i)}</div>
@@ -172,7 +215,7 @@ function renderBoard(side,p){
       if(u.terrified) uEl.classList.add('terrified');
     } else {
       node.classList.add('empty');
-      node.innerHTML=`<div class="dot"></div><div class="node-tip">${NODE_FX[p.nodes[i]].txt}</div>`;
+      node.innerHTML=`<div class="dot"></div><div class="node-tip">${nodeText(p,i)}</div>`;
     }
   });
   /* ring edges: lit between adjacent occupied nodes; full circle = communion */
@@ -201,10 +244,11 @@ function renderBoard(side,p){
   if(p.abstractUnit){
     const u=p.abstractUnit;
     hpEl.innerHTML=`${u.hp}<span class="sig-max">/ ${u.maxHp}</span>`;
-    subEl.innerHTML=`shielding core · ${p.hp}`;
+    subEl.innerHTML=`${formGuarded(p)?'guarded · core':'shielding core'} · ${p.hp}`;
   } else {
     hpEl.innerHTML=`${p.hp}<span class="sig-max">/ ${START_HP}</span>`;
     subEl.innerHTML=`<svg class="chain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M11 7l1-1a3.4 3.4 0 0 1 4.8 4.8l-1 1"/><path d="M13 17l-1 1a3.4 3.4 0 0 1-4.8-4.8l1-1"/></svg> ${p.summonCost}`;
+    if(p.formTimer) subEl.innerHTML=`⧖ ${p.formTimer.left}`;   // no price: it arrives on a countdown
   }
   /* the LATENT emblem fades toward black as the core bleeds; the manifested emblem never fades */
   const preSvg=c.querySelector('.ic-pre svg');
@@ -220,7 +264,7 @@ function renderHand(){
   el.innerHTML=p.hand.map((cid,i)=>{
     const c=CARDS[cid];
     const hasMana = c.cost<=p.mana;
-    const hasTgt  = (typeof spellTargetable==='function') ? spellTargetable(p,c) : true;
+    const hasTgt  = (c.t==='f' && c.replace) ? canPlayFollower(p,c) : ((typeof spellTargetable==='function') ? spellTargetable(p,c) : true);
     const aff = hasMana && hasTgt && myTurn;
     const drag = aff && c.t==='f';
     const noTgt = myTurn && hasMana && !hasTgt;   // otherwise castable, blocked only by a lack of targets
@@ -230,7 +274,7 @@ function renderHand(){
       <div class="ctype">${c.t==='f'?'Follower':'Spell'}</div>
       <div class="ctext">${c.txt||''}</div>
       ${c.t==='f'?`<div class="cstats"><span class="uatk">${c.atk}</span><span class="cinv">✦ invoke ${c.inv}</span><span class="uhp">${c.hp}</span></div>`:''}
-      ${noTgt?`<div class="hover-tip card-tip"><b>No valid targets.</b></div>`:(c.explain?`<div class="hover-tip card-explain">${c.explain}</div>`:'')}
+      ${noTgt?`<div class="hover-tip card-tip"><b>${c.replace?'Needs one of your followers to hide.':((c.fx==='illusion' && nodesRemoved(p)<=0)?'Distil your diagram first.':'No valid targets.')}</b></div>`:(c.explain?`<div class="hover-tip card-explain">${c.explain}${c.fx==='illusion'?`<div><b>Now:</b> ${illusionSize(p,cid)}/${2*illusionSize(p,cid)} for ${nodesRemoved(p)} turn${nodesRemoved(p)===1?'':'s'}.</div>`:''}${c.fx==='arcana'?`<div><b>Now:</b> ${(p.summonCount||0)===0?'make a wish.':((p.summonCount||0)===1?'reshape your diagram.':(p.abstractUnit?'restore your form to full HP.':'your form manifests.'))}</div>`:''}</div>`:'')}
     </div>`;
   }).join('');
 }
@@ -241,7 +285,7 @@ function renderCmd(){
   const endBtn=document.getElementById('btn-end');
   endBtn.disabled = !myTurn;
   const anythingLeft = myTurn && (
-    p.hand.some(cid=>CARDS[cid].cost<=p.mana && (CARDS[cid].t==='s' || p.board.some(s=>!s))) ||
+    p.hand.some(cid=>CARDS[cid].cost<=p.mana && (CARDS[cid].t==='s' || canPlayFollower(p,CARDS[cid]))) ||
     unitRefs(p).some(r=>getUnit(r).ready) ||
     (!p.abstractUnit && p.invoke>=p.summonCost) ||
     canUseAbility(p)
@@ -291,12 +335,12 @@ function applyHighlights(){
     }
     if(t.mode==='attack'||t.mode==='enemyAny'){
       /* the form shields the core: the centre is always the face target */
-      document.querySelector('#board-foe .centre').classList.add('targetable');
+      if(!(t.mode==='attack' && formGuarded(enemy()))) document.querySelector('#board-foe .centre').classList.add('targetable');
     }
     if(t.mode==='friendUnit'){
       document.querySelectorAll('#board-you .unit').forEach(e=>e.classList.add('friend-target'));
     }
-    if(t.mode==='emptyNode'){
+    if(t.mode==='emptyNode' || t.mode==='summonNode'){
       document.querySelectorAll('#board-you .node.empty').forEach(e=>e.classList.add('playable'));
     }
   }

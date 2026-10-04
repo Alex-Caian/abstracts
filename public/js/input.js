@@ -12,6 +12,24 @@
    ghost card follows the pointer; drop target is resolved with
    document.elementFromPoint.
    ===================================================================== */
+/* Ancient Arcana's wish (never summoned): pick one of three; the damage wish then asks for a target */
+function openWish(){
+  const p=you();
+  renderAll();
+  showWishPicker([
+    {key:'heal',    label:'Restore 5 HP to your core, gain 1 mana.'},
+    {key:'essence', label:'Gain 5 essence and 1 mana.'},
+    {key:'damage',  label:'Deal 5 damage to an enemy follower, gain 1 mana.', disabled:unitRefs(enemy()).length===0}
+  ], (wish)=>{
+    if(!wish || ui.selCard===null){ clearSelection(); renderAll(); return; }
+    if(wish==='damage'){
+      ui.targeting={mode:'enemyUnit', hint:'Your wish: choose an enemy follower to strike for 5.',
+        onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,Object.assign({wish:'damage'},ref)); }};
+      renderAll(); return;
+    }
+    const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,{zone:'wish',wish});
+  });
+}
 function selectUnit(ref){
   ui.selCard=null;
   ui.selUnit=ref;
@@ -41,12 +59,17 @@ document.addEventListener('click',ev=>{
     const i=+cardEl.dataset.hand, c=CARDS[p.hand[i]];
     ui.selUnit=null; ui.targeting=null;   // clicking any card cancels a pending target/selection first
     if(c.cost>p.mana){ flashHint(`Not enough mana for ${c.name} (${c.cost}).`); renderAll(); return; }
-    if(c.t==='f'){ flashHint(`Drag ${c.name} onto one of your nodes to play it.`); renderAll(); return; }
+    if(c.t==='f'){ flashHint(c.replace?`Drag ${c.name} onto one of your followers to hide it.`:`Drag ${c.name} onto one of your nodes to play it.`); renderAll(); return; }
     if(ui.selCard===i){ ui.selCard=null; renderAll(); return; }
     ui.selCard=i;
+    if(c.fx==='arcana' && (p.summonCount||0)===0){ openWish(); return; }   // never summoned: Ancient Arcana asks for a wish first
     if(!c.target){ const idx=ui.selCard; ui.selCard=null; dissolveCard(idx); castSpell(p,idx,null); return; }
     if(c.target==='enemyUnit' && unitRefs(enemy()).length===0){ flashHint('No enemy follower to target.'); ui.selCard=null; renderAll(); return; }
     if(c.target==='friendUnit' && unitRefs(p).length===0){ flashHint('You have no follower to target.'); ui.selCard=null; renderAll(); return; }
+    if(c.target==='summonNode'){
+      if(c.fx==='illusion' && nodesRemoved(p)<=0){ flashHint('Distil your diagram first. The Illusion stays one turn per node removed.'); ui.selCard=null; renderAll(); return; }
+      if(!p.board.some(s=>!s)){ flashHint('No empty node for it to appear on.'); ui.selCard=null; renderAll(); return; }
+    }
     if(c.target==='emptyNode'){
       if(p.board.length<=4){ flashHint('The diagram can tighten no further.'); ui.selCard=null; renderAll(); return; }
       if(!p.board.some(s=>!s)){ flashHint('No empty node to dissolve.'); ui.selCard=null; renderAll(); return; }
@@ -58,7 +81,7 @@ document.addEventListener('click',ev=>{
       renderAll(); return;
     }
     ui.targeting={mode:c.target,
-      hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='enemyAny'?'Choose an enemy follower or abstract.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':'Choose one of your followers.')),
+      hint:c.target==='enemyUnit'?'Choose an enemy follower.':(c.target==='enemyAny'?'Choose an enemy follower or abstract.':(c.target==='emptyNode'?'Choose an empty node to dissolve.':(c.target==='summonNode'?'Choose an empty node for it to appear on.':'Choose one of your followers.'))),
       onPick:(ref)=>{ const idx=ui.selCard; clearSelection(); dissolveCard(idx); castSpell(p,idx,ref); }};
     renderAll(); return;
   }
@@ -82,9 +105,11 @@ document.addEventListener('click',ev=>{
     }
     if((t.mode==='enemyUnit'||t.mode==='attack'||t.mode==='enemyAny') && foeUnit){ t.onPick({pi:1,zone:'board',idx:+foeUnit.dataset.idx}); return; }
     /* the centre IS the face (form or exposed core); the strip works too */
-    if((t.mode==='attack'||t.mode==='enemyAny') && (foeCentre || ev.target.closest('#strip-foe'))){ t.onPick({pi:1,zone:'hero'}); return; }
+    if((t.mode==='attack'||t.mode==='enemyAny') && (foeCentre || ev.target.closest('#strip-foe'))){
+      if(t.mode==='attack' && formGuarded(enemy())){ flashHint(`${enemy().abstractUnit.name}'s followers guard its form. Defeat them first.`); return; }
+      t.onPick({pi:1,zone:'hero'}); return; }
     if(t.mode==='friendUnit' && youUnit){ t.onPick({pi:0,zone:'board',idx:+youUnit.dataset.idx}); return; }
-    if(t.mode==='emptyNode'){
+    if(t.mode==='emptyNode' || t.mode==='summonNode'){
       const nodeEl=ev.target.closest('.node[data-side="you"]');
       if(nodeEl && !p.board[+nodeEl.dataset.idx]){ t.onPick({pi:0,zone:'node',idx:+nodeEl.dataset.idx}); return; }
       clearSelection(); renderAll(); return;
@@ -120,7 +145,10 @@ function dragNodeAtPoint(x,y){
   try{ el=document.elementFromPoint(x,y); }catch(e){ el=null; }
   if(dragPtr.ghost) dragPtr.ghost.style.display='';
   const node = el && el.closest && el.closest('.node[data-side="you"]');
-  return (node && !you().board[+node.dataset.idx]) ? node : null;
+  if(!node) return null;
+  const c = CARDS[you().hand[dragPtr.idx]];
+  const occupied = !!you().board[+node.dataset.idx];
+  return (c && c.replace ? occupied : !occupied) ? node : null;   // Time Borrower drops onto a follower; others onto an empty node
 }
 function dragStartGhost(x,y){
   dragPtr.started=true;
@@ -132,7 +160,9 @@ function dragStartGhost(x,y){
   document.body.appendChild(g); dragPtr.ghost=g;
   dragPtr.cardEl.classList.add('dragging');
   document.querySelectorAll('#board-you .node').forEach(n=>{
-    if(!you().board[+n.dataset.idx]) n.classList.add('playable');
+    const occupied = !!you().board[+n.dataset.idx];
+    if(c.replace){ if(occupied){ n.classList.add('playable'); const ue=n.querySelector('.unit'); if(ue) ue.classList.add('borrow-target'); } }
+    else if(!occupied) n.classList.add('playable');
   });
   /* from the 2nd Vindicator on, mark the consecrated seat it must occupy to invoke */
   const dragCid=you().hand[dragPtr.idx];
@@ -150,6 +180,7 @@ function dragCleanup(){
   if(dragPtr.ghost) dragPtr.ghost.remove();
   if(dragPtr.cardEl) dragPtr.cardEl.classList.remove('dragging');
   document.querySelectorAll('.node.playable,.node.drag-over,.node.consecrated').forEach(n=>n.classList.remove('playable','drag-over','consecrated'));
+  document.querySelectorAll('.unit.borrow-target').forEach(u=>u.classList.remove('borrow-target'));
   ui.dragCard=null;
   dragPtr.idx=null; dragPtr.cardEl=null; dragPtr.ghost=null; dragPtr.started=false; dragPtr.overNode=null;
 }

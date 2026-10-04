@@ -130,8 +130,9 @@ function runDialogue(lines, onDone){
     titleEl.textContent=l.speaker||''; titleEl.style.color=speakerColor(l.speaker, l.arch);
     textEl.innerHTML=fmtDialogue(l.text||'');
     nextBtn.textContent = i===lines.length-1?'Begin':'Next';
-    if(backBtn) backBtn.style.visibility = i===0?'hidden':'visible'; }
-  function cleanup(){ ov.classList.add('hidden'); ov.classList.remove('dialogue-mode'); titleEl.style.color=''; nextBtn.removeEventListener('click',next); if(backBtn) backBtn.removeEventListener('click',back); }
+    if(backBtn){ backBtn.style.display = lines.length===1 ? 'none' : '';   // a one-line card has nothing to go back to: drop the button so Begin sits centred
+      backBtn.style.visibility = i===0?'hidden':'visible'; } }
+  function cleanup(){ ov.classList.add('hidden'); ov.classList.remove('dialogue-mode'); titleEl.style.color=''; nextBtn.removeEventListener('click',next); if(backBtn){ backBtn.removeEventListener('click',back); backBtn.style.display=''; } }
   function next(){ i++; if(i>=lines.length){ cleanup(); if(onDone) onDone(); } else show(); }
   function back(){ if(i>0){ i--; show(); } }
   nextBtn.addEventListener('click', next);
@@ -194,7 +195,8 @@ function startCampaignGame(campId, game){
   const afterIntro = canPick
     ? ()=> showDeckPick(game.arch, launch, ()=>{ renderCampaignGames(campId); showScreen('screen-campaign'); })
     : ()=> launch();
-  if(game.dialogue) runDialogue(game.dialogue, afterIntro);
+  if(game.intro) runDialogue([{ speaker:game.label, text:game.intro, arch:game.foeArch }], afterIntro);   // one-line matchup card, headed by the stage name in the foe's colour
+  else if(game.dialogue) runDialogue(game.dialogue, afterIntro);
   else if(game.tutorial){ const steps = TUTORIALS[game.tutorial] || TUTORIALS.basics; runTutorial(steps, afterIntro); }
   else afterIntro();
 }
